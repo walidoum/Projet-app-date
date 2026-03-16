@@ -615,6 +615,7 @@ body{
     <button class="nb active" data-p="map" onclick="NAV.go('map',this)"><span class="ni">🗺️</span><span>Carte</span></button>
     <button class="nb" data-p="journal" onclick="NAV.go('journal',this)"><span class="ni">📖</span><span>Journal</span></button>
     <button class="nb" data-p="settings" onclick="NAV.go('settings',this)"><span class="ni">⚙️</span><span>Réglages</span></button>
+    <button class="nb" onclick="showUserPicker()" title="Changer d'utilisateur"><span class="ni" id="user-indicator">👤</span><span>Moi</span></button>
   </nav>
 
   <!-- LIST PAGE -->
@@ -827,6 +828,182 @@ body{
 <!-- ══ SCRIPTS ══ -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+// ══════════════════════════════════════════════════
+// SUPABASE CONFIG
+// ══════════════════════════════════════════════════
+var SUPA_URL = 'https://lwqvmefgonxzopwunidt.supabase.co';
+var SUPA_KEY = 'sb_publishable_l41iwy1XFLlkLGKGHQLD8w_pSgIaazW';
+
+// Client Supabase léger (REST + Realtime)
+var DB = {
+  _headers: {
+    'apikey': SUPA_KEY,
+    'Authorization': 'Bearer ' + SUPA_KEY,
+    'Content-Type': 'application/json',
+    'Prefer': 'return=representation'
+  },
+  _ws: null,
+
+  // GET all rows
+  get: function(table, cb) {
+    fetch(SUPA_URL + '/rest/v1/' + table + '?select=*', {headers: DB._headers})
+      .then(function(r){return r.json()})
+      .then(function(data){cb(null, data)})
+      .catch(function(e){cb(e, null)});
+  },
+
+  // UPSERT (insert or update)
+  upsert: function(table, data, cb) {
+    fetch(SUPA_URL + '/rest/v1/' + table, {
+      method: 'POST',
+      headers: Object.assign({}, DB._headers, {'Prefer': 'resolution=merge-duplicates,return=representation'}),
+      body: JSON.stringify(data)
+    })
+    .then(function(r){return r.json()})
+    .then(function(d){if(cb)cb(null,d)})
+    .catch(function(e){if(cb)cb(e,null)});
+  },
+
+  // DELETE by id
+  del: function(table, id, cb) {
+    fetch(SUPA_URL + '/rest/v1/' + table + '?id=eq.' + encodeURIComponent(id), {
+      method: 'DELETE',
+      headers: DB._headers
+    })
+    .then(function(){if(cb)cb(null)})
+    .catch(function(e){if(cb)cb(e)});
+  },
+
+  // GET config value
+  getConfig: function(key, cb) {
+    fetch(SUPA_URL + '/rest/v1/config?key=eq.' + key + '&select=*', {headers: DB._headers})
+      .then(function(r){return r.json()})
+      .then(function(d){cb(null, d&&d[0]?d[0].value:null)})
+      .catch(function(e){cb(e,null)});
+  },
+
+  // SET config value
+  setConfig: function(key, value, cb) {
+    fetch(SUPA_URL + '/rest/v1/config', {
+      method: 'POST',
+      headers: Object.assign({}, DB._headers, {'Prefer': 'resolution=merge-duplicates'}),
+      body: JSON.stringify({key: key, value: value, updated_at: new Date().toISOString()})
+    })
+    .then(function(){if(cb)cb(null)})
+    .catch(function(e){if(cb)cb(e)});
+  },
+
+  // Realtime sync via polling toutes les 10s
+  startSync: function() {
+    DB._syncInterval = setInterval(function(){
+      DB._pullAll();
+    }, 10000);
+  },
+
+  _pullAll: function() {
+    // Pull memories
+    DB.get('memories', function(err, rows) {
+      if(err || !rows) return;
+      var changed = false;
+      rows.forEach(function(row) {
+        var existing = S.memories.find(function(m){return m.id === row.id});
+        var mem = {
+          id: row.id, title: row.title, address: row.address,
+          lat: row.lat, lng: row.lng, date: row.date, catId: row.cat_id,
+          note: row.note, fav: row.fav, photoRefs: row.photo_refs || [],
+          photos: [], createdBy: row.created_by
+        };
+        if(!existing) { S.memories.push(mem); changed = true; }
+        else {
+          // Update si différent
+          if(JSON.stringify(existing) !== JSON.stringify(mem)) {
+            var idx = S.memories.indexOf(existing);
+            S.memories[idx] = mem; changed = true;
+          }
+        }
+      });
+      // Supprimer ceux qui n'existent plus
+      S.memories = S.memories.filter(function(m){
+        return rows.some(function(r){return r.id === m.id});
+      });
+      if(changed) {
+        STORAGE.save();
+        if(NAV.cur === 'map') MAP.render();
+        if(NAV.cur === 'list') LIST.render();
+        if(NAV.cur === 'stats') STATS.render();
+      }
+    });
+
+    // Pull wishlist
+    DB.get('wishlist', function(err, rows) {
+      if(err || !rows) return;
+      S.wishlist = rows.map(function(r){
+        return {id:r.id,title:r.title,address:r.address,lat:r.lat,lng:r.lng,catId:r.cat_id,note:r.note,createdBy:r.created_by};
+      });
+    });
+
+    // Pull journal
+    DB.get('journal', function(err, rows) {
+      if(err || !rows) return;
+      S.journal = rows.map(function(r){
+        return {id:r.id,title:r.title,text:r.text,emoji:r.emoji,date:r.date,link:r.link,createdBy:r.created_by};
+      });
+      if(NAV.cur === 'journal') JOURNAL.render();
+    });
+
+    // Pull config
+    DB.getConfig('app_config', function(err, val) {
+      if(err || !val) return;
+      S.config = Object.assign({}, S.config, val);
+      SPLASH.update();
+    });
+
+    // Pull categories
+    DB.get('categories', function(err, rows) {
+      if(err || !rows || !rows.length) return;
+      S.categories = rows.map(function(r){
+        return {id:r.id,name:r.name,icon:r.icon,color:r.color,type:r.type,anim:r.anim};
+      });
+    });
+  }
+};
+
+// ══════════════════════════════════════════════════
+// PROFIL UTILISATEUR
+// ══════════════════════════════════════════════════
+var CURRENT_USER = localStorage.getItem('wv_user') || null;
+
+function showUserPicker() {
+  // Créer l'overlay de sélection
+  var ov = document.createElement('div');
+  ov.id = 'user-picker';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:99999;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;padding:40px';
+  ov.innerHTML = '<div style="font-family:Cormorant Garant,serif;font-size:clamp(2rem,8vw,3rem);color:var(--acc);text-align:center">Winnie <em>&</em> Vvs</div>'
+    + '<div style="font-size:14px;color:var(--tx2);text-align:center">Qui es-tu ?</div>'
+    + '<div style="display:flex;gap:16px;width:100%;max-width:320px">'
+    + '<button onclick="setUser('winnie')" style="flex:1;padding:20px;border:2px solid var(--acc);border-radius:20px;background:transparent;color:var(--acc);font-family:Cormorant Garant,serif;font-size:22px;cursor:pointer">Winnie</button>'
+    + '<button onclick="setUser('vvs')" style="flex:1;padding:20px;border:2px solid var(--acc2);border-radius:20px;background:transparent;color:var(--acc2);font-family:Cormorant Garant,serif;font-size:22px;cursor:pointer">Vvs</button>'
+    + '</div>';
+  document.body.appendChild(ov);
+}
+
+function setUser(name) {
+  CURRENT_USER = name;
+  localStorage.setItem('wv_user', name);
+  var el = document.getElementById('user-picker');
+  if(el) el.remove();
+  // Afficher indicateur user dans la nav
+  updateUserIndicator();
+}
+
+function updateUserIndicator() {
+  var indicator = document.getElementById('user-indicator');
+  if(!indicator) return;
+  indicator.textContent = CURRENT_USER === 'winnie' ? '🤴' : '👸';
+  indicator.title = CURRENT_USER === 'winnie' ? 'Winnie' : 'Vvs';
+}
+
+
 /* ════════════════════════════════════════════════════
    WINNIE & VVS — Application complète
    Version 7.1 — Fix PWA iOS safe-area-inset-bottom
@@ -924,6 +1101,10 @@ var STORAGE={
       d.memories.forEach(function(m){m.photos=[];});
       localStorage.setItem(STORAGE.KEY,JSON.stringify(d));
     }catch(e){if(e.name==='QuotaExceededError')UI.toast('⚠️ Stockage plein — exportez !','er')}
+  },
+  // Sync config vers Supabase
+  syncConfig: function() {
+    DB.setConfig('app_config', S.config, null);
   },
   load:function(){
     var raw=null;
@@ -1642,6 +1823,13 @@ var MEM={
       };
       S.memories.push(mem);
       STORAGE.save();MEDIA.clearStaged('addmem');
+      // Sync Supabase
+      DB.upsert('memories', {
+        id:mem.id, title:mem.title, address:mem.address||null,
+        lat:mem.lat||null, lng:mem.lng||null, date:mem.date,
+        cat_id:mem.catId, note:mem.note||null, fav:mem.fav||false,
+        photo_refs:mem.photoRefs||[], created_by:CURRENT_USER||'winnie'
+      }, null);
       UI.closeSheet('sh-addmem');MAP.render();
       if(NAV.cur==='list')LIST.render();
       UI.toast('✦ Souvenir ajouté'+(refs.length?' ('+refs.length+' photo'+(refs.length>1?'s':'')+')':'')+'!','ok');
@@ -1805,8 +1993,10 @@ var MEM={
       IDB.deleteForMem(id,function(){
         S.memories=S.memories.filter(function(m){return m.id!==id});
         STORAGE.save();UI.revokeAll();
+        DB.del('memories', id, null);
         UI.closeSheet('sh-memdetail');MAP.render();
         if(NAV.cur==='list')LIST.render();
+        MEM.closeDetail();
         UI.toast('Souvenir supprimé','');
       });
     });
@@ -1827,8 +2017,16 @@ var WISH={
   save:function(){
     if(!UI.validate(['w-title']))return;
     var pos=APP._pendingPos||{lat:null,lng:null};APP._pendingPos=null;
-    S.wishlist.push({id:uid(),title:UI.getVal('w-title'),address:UI.getVal('w-addr'),lat:pos.lat,lng:pos.lng,catId:document.getElementById('w-cat').value,note:UI.getVal('w-note')});
-    STORAGE.save();UI.closeSheet('sh-addwish');MAP.render();
+    var newWish = {id:uid(),title:UI.getVal('w-title'),address:UI.getVal('w-addr'),lat:pos.lat,lng:pos.lng,catId:document.getElementById('w-cat').value,note:UI.getVal('w-note')};
+    S.wishlist.push(newWish);
+    STORAGE.save();
+    DB.upsert('wishlist', {
+      id:newWish.id, title:newWish.title, address:newWish.address||null,
+      lat:newWish.lat||null, lng:newWish.lng||null,
+      cat_id:newWish.catId, note:newWish.note||null,
+      created_by:CURRENT_USER||'winnie'
+    }, null);
+    UI.closeSheet('sh-addwish');MAP.render();
     UI.toast('🗺️ Ajouté à la wishlist !','ok');
   },
   openDetail:function(id){
@@ -1908,7 +2106,12 @@ var CAT={
     }else{
       S.categories.push({id:uid(),name:name,icon:icon,color:color,type:type,anim:anim});
     }
-    STORAGE.save();UI.closeSheet('sh-cat');SETTINGS.render();MAP.render();
+    STORAGE.save();
+    // Sync toutes les catégories
+    S.categories.forEach(function(cat){
+      DB.upsert('categories', {id:cat.id,name:cat.name,icon:cat.icon,color:cat.color,type:cat.type,anim:cat.anim||'none'}, null);
+    });
+    UI.closeSheet('sh-cat');SETTINGS.render();MAP.render();
     if(NAV.cur==='list')LIST.render();
     UI.toast('✦ Catégorie '+(editId?'modifiée':'créée')+' !','ok');
   },
@@ -1951,7 +2154,13 @@ var JOURNAL={
     var entry={id:editId||uid(),title:UI.getVal('j-title'),text:UI.getVal('j-text'),emoji:UI.getVal('j-emoji')||'📝',date:UI.getVal('j-date')||today(),link:document.getElementById('j-link').value};
     if(editId){var idx=S.journal.findIndex(function(j){return j.id===editId});if(idx>=0)S.journal[idx]=entry}
     else S.journal.unshift(entry);
-    STORAGE.save();UI.closeSheet('sh-addjournal');JOURNAL.render();
+    STORAGE.save();
+    DB.upsert('journal', {
+      id:entry.id, title:entry.title, text:entry.text,
+      emoji:entry.emoji, date:entry.date, link:entry.link||null,
+      created_by:CURRENT_USER||'winnie'
+    }, null);
+    UI.closeSheet('sh-addjournal');JOURNAL.render();
     UI.toast(editId?'✦ Entrée modifiée !':'✦ Entrée publiée !','ok');
   },
   edit:function(id){
@@ -2527,20 +2736,32 @@ var APP={
   _pendingPos:null,_convertWishId:null,_detailMemId:null,_editPos:null,
   enterMain:function(){
     document.getElementById('app').classList.remove('hidden');
+    updateUserIndicator();
     MAP.init();MAP.renderSubfilters();
     setTimeout(function(){
       if(S.memories.length>=8)SOV.show();
     },700);
   },
   init:function(){
+    // Charger local d'abord (pour affichage immédiat)
     if(!STORAGE.load()){
       var d=JSON.parse(JSON.stringify(DEMO));
       S.categories=d.categories;S.memories=d.memories;S.wishlist=d.wishlist;
       S.journal=d.journal;S.specialDates=d.specialDates;S.config=d.config;
       STORAGE.save();
     }
+    // Vérifier si l'utilisateur est connu
+    if(!CURRENT_USER) {
+      THEMES.restore();
+      SPLASH.update();
+      // Montrer le sélecteur après un court délai
+      setTimeout(showUserPicker, 100);
+    }
     THEMES.restore();
     SPLASH.update();
+    // Démarrer la sync Supabase en background
+    DB._pullAll();
+    DB.startSync();
     document.getElementById('sp-btn').addEventListener('click',function(){
       var special=CELEB.check();
       document.getElementById('splash').classList.add('out');
