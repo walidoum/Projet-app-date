@@ -202,7 +202,7 @@ body{
 .map-action-btn:hover,.map-action-btn:active{background:var(--acc);color:var(--bg)}
 .map-action-wish{border-color:var(--acc2);color:var(--acc2)}
 .map-action-wish:hover,.map-action-wish:active{background:var(--acc2);color:var(--bg)}
-.map-locate-btn{position:absolute;bottom:max(16px,calc(var(--sab) + 8px));right:16px;z-index:400;width:46px;height:46px;border-radius:50%;background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--bd);color:var(--tx2);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:var(--shsm);transition:all .2s}
+.map-locate-btn{position:absolute;bottom:calc(16px + env(safe-area-inset-bottom,0px));right:16px;z-index:400;width:46px;height:46px;border-radius:50%;background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--bd);color:var(--tx2);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:var(--shsm);transition:all .2s}
 .map-locate-btn:hover,.map-locate-btn:active{border-color:var(--acc);color:var(--acc);background:var(--sur)}
 .map-locate-btn.locating{border-color:var(--acc);color:var(--acc);animation:locatePulse 1s ease-in-out infinite}
 .map-locate-btn.located{border-color:var(--ok);color:var(--ok)}
@@ -631,7 +631,7 @@ body{
     <button class="nb active" data-p="map" onclick="NAV.go('map',this)"><span class="ni">🗺️</span><span>Carte</span></button>
     <button class="nb" data-p="journal" onclick="NAV.go('journal',this)"><span class="ni">📖</span><span>Journal</span></button>
     <button class="nb" data-p="settings" onclick="NAV.go('settings',this)"><span class="ni">⚙️</span><span>Réglages</span></button>
-    <button class="nb" onclick="showUserPicker()" title="Changer d'utilisateur"><span class="ni" id="user-indicator">👤</span><span>Moi</span></button>
+
   </nav>
 
   <!-- LIST PAGE -->
@@ -983,10 +983,11 @@ var DB = {
       });
       if(changed) {
         STORAGE.save();
-        if(NAV.cur === 'map') MAP.render();
-        if(NAV.cur === 'list') LIST.render();
-        if(NAV.cur === 'stats') STATS.render();
       }
+      // Toujours re-render la carte pour afficher les marqueurs Supabase
+      if(NAV.cur === 'map') MAP.render();
+      if(NAV.cur === 'list') LIST.render();
+      if(NAV.cur === 'stats') STATS.render();
     });
 
     // Pull wishlist
@@ -2240,7 +2241,7 @@ var JOURNAL={
   save:function(){
     if(!UI.validate(['j-title','j-text']))return;
     var editId=UI.getVal('j-id');
-    var entry={id:editId||uid(),title:UI.getVal('j-title'),text:UI.getVal('j-text'),emoji:UI.getVal('j-emoji')||'📝',date:UI.getVal('j-date')||today(),link:document.getElementById('j-link').value};
+    var entry={id:editId||uid(),title:UI.getVal('j-title'),text:UI.getVal('j-text'),emoji:UI.getVal('j-emoji')||'❤️',date:UI.getVal('j-date')||today(),link:document.getElementById('j-link').value};
     if(editId){var idx=S.journal.findIndex(function(j){return j.id===editId});if(idx>=0)S.journal[idx]=entry}
     else S.journal.unshift(entry);
     STORAGE.save();
@@ -2353,7 +2354,20 @@ var STATS={
     var el=document.getElementById('stats-body');el.innerHTML='';
     var mems=S.memories,favs=0;
     mems.forEach(function(m){if(m.fav)favs++});
-    var cities={};mems.forEach(function(m){var c=(m.address||'').split(',')[0].trim();if(c)cities[c]=(cities[c]||0)+1});
+    var cities={};mems.forEach(function(m){
+      var addr=m.address||'';
+      var parts=addr.split(',');
+      // Chercher la ville : dernier élément non-vide, enlever le code postal
+      var city='';
+      for(var pi=parts.length-1;pi>=0;pi--){
+        var p=parts[pi].trim();
+        // Enlever les codes postaux (ex: "75002 Paris" → "Paris")
+        p=p.replace(/^\d{4,6}\s*/,'').trim();
+        if(p&&p.length>2&&!/^\d+$/.test(p)){city=p;break;}
+      }
+      if(!city&&parts.length)city=parts[0].trim();
+      if(city)cities[city]=(cities[city]||0)+1;
+    });
     var nCities=Object.keys(cities).length;
     var thisM=new Date().toISOString().slice(0,7);
     var thisCount=mems.filter(function(m){return m.date&&m.date.slice(0,7)===thisM}).length;
@@ -2825,7 +2839,6 @@ var APP={
   _pendingPos:null,_convertWishId:null,_detailMemId:null,_editPos:null,
   enterMain:function(){
     document.getElementById('app').classList.remove('hidden');
-    updateUserIndicator();
     MAP.init();MAP.renderSubfilters();
     setTimeout(function(){
       if(S.memories.length>=8)SOV.show();
@@ -2854,10 +2867,7 @@ var APP={
           CELEB.show(special);
         } else {
           APP.enterMain();
-          // Montrer sélecteur user si pas encore choisi
-          if(!CURRENT_USER) {
-            setTimeout(showUserPicker, 500);
-          }
+
         }
       },400);
     });
