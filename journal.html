@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Winnie et Vvs">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0D0D0D">
+<title>Journal — Winnie & Vvs</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garant:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=1773763754">
+<link rel="stylesheet" href="fab.css?v=1773763754">
+
+<script>try{var _t=JSON.parse(localStorage.getItem('wv_app')||'{}');if(_t.config&&_t.config.theme)document.body.setAttribute('data-theme',_t.config.theme)}catch(e){}</script>
+</head>
+<body>
+
+<!-- FAB navigation injectée par fab.js -->
+
+<div id="toast"></div>
+<canvas id="cc" style="position:fixed;inset:0;z-index:1799;pointer-events:none"></canvas>
+
+<div id="cov" class="hidden" onclick="if(event.target===this)CN.no()">
+  <div class="cbox">
+    <h3 id="c-title" class="ctitle"></h3>
+    <p id="c-msg" class="cmsg"></p>
+    <div class="cbtns">
+      <button class="btn btn-g" onclick="CN.no()">Annuler</button>
+      <button class="btn btn-d" onclick="CN.yes()">Supprimer</button>
+    </div>
+  </div>
+</div>
+
+<div id="lb" class="hidden" onclick="LB.close()">
+  <button class="lbclose" onclick="LB.close()">&#10005;</button>
+  <button class="lbprev" onclick="event.stopPropagation();LB.prev()">&#8249;</button>
+  <button class="lbnext" onclick="event.stopPropagation();LB.next()">&#8250;</button>
+  <img id="lb-img" src="" alt="" onclick="event.stopPropagation()">
+</div>
+
+<!-- Sheets Souvenir Add/Edit -->
+<div class="ov hidden" id="sh-addmem" onclick="UI.ovc(event,this)">
+  <div class="sheet"><div class="handle"></div><h3 class="stitle">&#10022; Nouveau souvenir</h3>
+    <div id="am-badge" class="pbadge hidden">&#128205; Position s&#233;lectionn&#233;e</div>
+    <div class="field"><label>Nom *</label><input type="text" id="a-title" class="inp" placeholder="ex : Le Petit Ch&#226;telet"></div>
+    <div class="field"><label>Adresse</label>
+      <div class="geobox"><input type="text" id="a-addr" class="inp" placeholder="ex : Paris, France" oninput="GEO.live(this.value,'a-addr','a-gr','addmem')" autocomplete="off">
+        <button class="geobtn geobtn-p" onclick="GEO.fill('a-addr','am-badge','a-title')">Loc.</button></div>
+      <div id="a-gr" class="geores hidden"></div></div>
+    <div class="frow">
+      <div class="field"><label>Date *</label><input type="date" id="a-date" class="inp"></div>
+      <div class="field"><label>Cat&#233;gorie *</label><select id="a-cat" class="inp sel-inp"></select></div>
+    </div>
+    <div class="field"><label>Note</label><textarea id="a-note" class="inp ta" rows="3"></textarea></div>
+    <div class="field"><label>Photos &amp; Vid&#233;os</label>
+      <div class="uzone" onclick="document.getElementById('a-files').click()">&#128247; Appuyer pour ajouter
+        <input type="file" id="a-files" accept="image/*,video/*" multiple style="display:none" onchange="MEDIA.preview(this,'a-prev','addmem')"></div>
+      <div id="a-prev" class="mpgrid"></div></div>
+    <div class="field"><label>Favori</label><select id="a-fav" class="inp sel-inp"><option value="0">Non</option><option value="1">&#11088; Oui</option></select></div>
+    <div class="sfooter">
+      <button class="btn btn-g" onclick="UI.closeSheet('sh-addmem')">Annuler</button>
+      <button class="btn btn-p" onclick="MEM.save()">Enregistrer &#10022;</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov hidden" id="sh-editmem" onclick="UI.ovc(event,this)">
+  <div class="sheet"><div class="handle"></div><h3 class="stitle">&#9999;&#65039; Modifier</h3>
+    <input type="hidden" id="e-id">
+    <div class="field"><label>Nom *</label><input type="text" id="e-title" class="inp"></div>
+    <div class="field"><label>Adresse</label>
+      <div class="geobox"><input type="text" id="e-addr" class="inp" oninput="GEO.live(this.value,'e-addr','e-gr','editmem')" autocomplete="off">
+        <button class="geobtn" onclick="GEO.fill('e-addr',null,null)">&#128205;</button></div>
+      <div id="e-gr" class="geores hidden"></div></div>
+    <div class="frow">
+      <div class="field"><label>Date *</label><input type="date" id="e-date" class="inp"></div>
+      <div class="field"><label>Cat&#233;gorie</label><select id="e-cat" class="inp sel-inp"></select></div>
+    </div>
+    <div class="field"><label>Note</label><textarea id="e-note" class="inp ta" rows="3"></textarea></div>
+    <div class="field"><label>Favori</label><select id="e-fav" class="inp sel-inp"><option value="0">Non</option><option value="1">&#11088; Oui</option></select></div>
+    <div class="field"><label>M&#233;dias existants</label>
+      <div id="e-existing" class="exmed"></div>
+      <div class="uzone" onclick="document.getElementById('e-files').click()">&#128247; Ajouter
+        <input type="file" id="e-files" accept="image/*,video/*" multiple style="display:none" onchange="MEDIA.preview(this,'e-prev','editmem')"></div>
+      <div id="e-prev" class="mpgrid"></div></div>
+    <div class="sfooter">
+      <button class="btn btn-g" onclick="UI.closeSheet('sh-editmem')">Annuler</button>
+      <button class="btn btn-p" onclick="MEM.update()">Sauvegarder &#10022;</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov hidden" id="sh-addwish" onclick="UI.ovc(event,this)">
+  <div class="sheet"><div class="handle"></div><h3 class="stitle">&#128506; Wishlist</h3>
+    <div id="aw-badge" class="pbadge hidden">&#128205; Position s&#233;lectionn&#233;e</div>
+    <div class="field"><label>Nom *</label><input type="text" id="w-title" class="inp" placeholder="ex : Tokyo"></div>
+    <div class="field"><label>Ville / Pays</label>
+      <div class="geobox"><input type="text" id="w-addr" class="inp" oninput="GEO.live(this.value,'w-addr','w-gr','addwish')" autocomplete="off">
+        <button class="geobtn" onclick="GEO.fill('w-addr','aw-badge',null)">&#128205;</button></div>
+      <div id="w-gr" class="geores hidden"></div></div>
+    <div class="field"><label>Cat&#233;gorie</label><select id="w-cat" class="inp sel-inp"></select></div>
+    <div class="field"><label>Note</label><textarea id="w-note" class="inp ta" rows="2"></textarea></div>
+    <div class="sfooter">
+      <button class="btn btn-g" onclick="UI.closeSheet('sh-addwish')">Annuler</button>
+      <button class="btn btn-p" onclick="WISH.save()">Ajouter &#10022;</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov hidden" id="sh-cat" onclick="UI.ovc(event,this)">
+  <div class="sheet"><div class="handle"></div><h3 class="stitle" id="cat-stitle">&#10022; Categorie</h3>
+    <input type="hidden" id="cat-id"><input type="hidden" id="cat-type">
+    <div class="field"><label>Nom *</label><input type="text" id="cat-name" class="inp"></div>
+    <div class="frow">
+      <div class="field"><label>Ic&#244;ne *</label><input type="text" id="cat-icon" class="inp" maxlength="4"></div>
+      <div class="field"><label>Couleur</label><input type="color" id="cat-color" class="inp" style="padding:4px 6px;height:44px;cursor:pointer" value="#C9A96E"></div>
+    </div>
+    <div class="field" id="cat-anim-f"><label>Animation</label><select id="cat-anim" class="inp sel-inp"><option value="pulse">Pulsation</option><option value="bounce">Rebond</option><option value="glow">Halo</option><option value="none">Aucune</option></select></div>
+    <div class="sfooter">
+      <button class="btn btn-g" onclick="UI.closeSheet('sh-cat')">Annuler</button>
+      <button class="btn btn-p" onclick="CAT.save()">Cr&#233;er &#10022;</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov hidden" id="sh-addjournal" onclick="UI.ovc(event,this)">
+  <div class="sheet"><div class="handle"></div><h3 class="stitle" id="j-stitle">&#128214; Nouvelle entr&#233;e</h3>
+    <input type="hidden" id="j-id">
+    <div class="field"><label>Titre *</label><input type="text" id="j-title" class="inp" placeholder="ex : Ce que j aime chez toi"></div>
+    <div class="frow">
+      <div class="field"><label>Emoji</label><input type="text" id="j-emoji" class="inp" placeholder="&#10084;&#65039;" maxlength="4"></div>
+      <div class="field"><label>Date</label><input type="date" id="j-date" class="inp"></div>
+    </div>
+    <div class="field"><label>Texte *</label><textarea id="j-text" class="inp ta" rows="6"></textarea></div>
+    <div class="field"><label>Lier &#224; un souvenir</label><select id="j-link" class="inp sel-inp"><option value="">&#8212; Aucun &#8212;</option></select></div>
+    <div class="sfooter">
+      <button class="btn btn-g" onclick="UI.closeSheet('sh-addjournal')">Annuler</button>
+      <button class="btn btn-p" onclick="JOURNAL.save()">Publier &#10022;</button>
+    </div>
+  </div>
+</div>
+<div class="content">
+  <div class="ph">
+    <div><h2 class="pt">Notre Journal</h2><p class="ps">Les mots du c&#339;ur</p></div>
+    <button class="btn btn-p btn-sm" onclick="UI.openSheet('sh-addjournal')">+ &#201;crire</button>
+  </div>
+  <div style="padding:14px 16px" id="jlist"></div>
+</div>
+<script src="core.js?v=1773763754"></script>
+
+<script>
+var JOURNAL={
+  render:function(){var el=document.getElementById('jlist');el.innerHTML='';var sorted=S.journal.slice().sort(function(a,b){return b.date.localeCompare(a.date)});if(!sorted.length){el.innerHTML='<div class="empty"><div class="emico">&#128214;</div><div class="emtxt">Aucune entree.</div></div>';return}sorted.forEach(function(j){var linked=j.link?S.memories.find(function(m){return m.id===j.link}):null;var d=document.createElement('div');d.className='jentry';d.innerHTML='<span class="jemoji">'+esc(j.emoji||'&#128221;')+'</span><div class="jhdr"><div class="jtitle">'+esc(j.title)+'</div><div class="jdate">'+fmtDate(j.date)+'</div></div><div class="jtext">'+esc(j.text)+'</div>'+(linked?'<div class="jlink">'+esc(linked.title)+'</div>':'');var acts=document.createElement('div');acts.className='jacts';var eb=document.createElement('button');eb.className='btn btn-g btn-sm';eb.textContent='Modifier';eb.onclick=function(){JOURNAL.edit(j.id)};acts.appendChild(eb);var db=document.createElement('button');db.className='btn btn-d btn-sm';db.textContent='Supprimer';db.onclick=function(){JOURNAL.remove(j.id)};acts.appendChild(db);d.appendChild(acts);el.appendChild(d)})},
+  save:function(){if(!UI.validate(['j-title','j-text']))return;var eid=UI.get('j-id');var entry={id:eid||uid(),title:UI.get('j-title'),text:UI.get('j-text'),emoji:UI.get('j-emoji')||'❤️',date:UI.get('j-date')||today(),link:document.getElementById('j-link').value};if(eid){var idx=S.journal.findIndex(function(j){return j.id===eid});if(idx>=0)S.journal[idx]=entry}else S.journal.unshift(entry);STG.save();DB.upsert('journal',{id:entry.id,title:entry.title,text:entry.text,emoji:entry.emoji,date:entry.date,link:entry.link||null,created_by:'winnie'},null);UI.closeSheet('sh-addjournal');JOURNAL.render();UI.toast(eid?'Entree modifiee !':'Publie !','ok')},
+  edit:function(id){var j=S.journal.find(function(x){return x.id===id});if(!j)return;document.getElementById('j-stitle').textContent='Modifier';UI.val('j-id',j.id);UI.val('j-title',j.title);UI.val('j-emoji',j.emoji||'');UI.val('j-date',j.date);UI.val('j-text',j.text);var lnk=document.getElementById('j-link');lnk.innerHTML='<option value="">Aucun</option>';S.memories.forEach(function(m){var o=document.createElement('option');o.value=m.id;o.textContent=m.title;if(m.id===j.link)o.selected=true;lnk.appendChild(o)});UI.openSheet('sh-addjournal')},
+  remove:function(id){UI.confirm('Supprimer ?','',function(){S.journal=S.journal.filter(function(j){return j.id!==id});STG.save();DB.del('journal',id,null);JOURNAL.render();UI.toast('Supprime','')})}
+};
+document.addEventListener('DOMContentLoaded',function(){FAB.init('journal');initCommon(function(){NAV.cur='journal';JOURNAL.render()});});
+</script>
+</body>
+</html>

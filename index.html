@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Winnie et Vvs">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0D0D0D">
+<title>Winnie &amp; Vvs</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garant:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="style.css?v=1773763754">
+<style>
+html,body{height:100%;margin:0;overflow:hidden}
+body{display:flex;align-items:center;justify-content:center;background:#0D0D0D}
+/* Annule le body::after du PWA sur la page splash */
+body::after{display:none!important}
+#splash{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;background:var(--bg);overflow:hidden}
+.sorbs{position:absolute;inset:0;pointer-events:none}
+.orb{position:absolute;border-radius:50%;filter:blur(70px);opacity:.16;animation:orbf 10s ease-in-out infinite alternate}
+.o1{width:500px;height:500px;background:var(--acc);top:-100px;left:-100px}
+.o2{width:400px;height:400px;background:var(--acc2);bottom:-80px;right:-80px;animation-duration:11s;animation-delay:-3s}
+.o3{width:280px;height:280px;background:#5a3a8a;top:40%;left:60%;animation-duration:7s;animation-delay:-1.5s}
+@keyframes orbf{to{transform:translate(40px,30px) scale(1.1)}}
+.spc{text-align:center;z-index:1;padding:32px;max-width:480px;width:100%}
+.spey{font-size:11px;letter-spacing:.4em;text-transform:uppercase;color:var(--tx2);margin-bottom:16px;animation:fu .8s .1s both}
+.sptitle{font-family:'Cormorant Garant',serif;font-size:clamp(3rem,10vw,5.5rem);font-weight:300;line-height:1;color:var(--acc);letter-spacing:.04em;animation:fu .8s .25s both}
+.sptitle em{font-style:italic;color:var(--acc2)}
+.spdiv{width:80px;height:1px;margin:22px auto;background:linear-gradient(90deg,transparent,var(--acc),transparent);animation:fu .8s .4s both}
+.spsince{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--tx2);animation:fu .8s .5s both}
+.spcount{font-family:'Cormorant Garant',serif;font-size:clamp(3rem,8vw,4.5rem);font-weight:600;color:var(--acc);line-height:1;margin:6px 0;animation:fu .8s .6s both}
+.spcountlbl{font-family:'Cormorant Garant',serif;font-size:17px;color:var(--tx2);font-weight:300;animation:fu .8s .65s both}
+.spphrase{font-family:'Cormorant Garant',serif;font-style:italic;font-size:clamp(.95rem,3vw,1.2rem);color:var(--acc2);max-width:380px;margin:18px auto;line-height:1.7;animation:fu .8s .75s both}
+.spbtn{padding:13px 40px;background:transparent;border:1px solid var(--acc);border-radius:50px;color:var(--acc);font-family:'Jost',sans-serif;font-size:12px;font-weight:500;letter-spacing:.25em;text-transform:uppercase;cursor:pointer;transition:all .35s;animation:fu .8s .9s both;touch-action:manipulation}
+.spbtn:active{background:var(--acc);color:var(--bg)}
+@keyframes fu{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+</style>
+<script>try{var _t=JSON.parse(localStorage.getItem('wv_app')||'{}');if(_t.config&&_t.config.theme)document.body.setAttribute('data-theme',_t.config.theme)}catch(e){}</script>
+</head>
+<body>
+<div id="splash">
+  <div class="sorbs"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div></div>
+  <div class="spc">
+    <p class="spey">&#10022; notre histoire &#10022;</p>
+    <h1 class="sptitle" id="sp-title">Winnie <em>&amp;</em> Vvs</h1>
+    <div class="spdiv"></div>
+    <p class="spsince" id="sp-since"></p>
+    <div class="spcount" id="sp-days">0</div>
+    <p class="spcountlbl">jours d&#8217;amour</p>
+    <p class="spphrase" id="sp-phrase"></p>
+    <button class="spbtn" id="sp-btn">Entrer &#10022;</button>
+  </div>
+</div>
+<script src="core.js?v=1773763754"></script>
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+  try{var _t=JSON.parse(localStorage.getItem('wv_app')||'{}');if(_t.config&&_t.config.theme)document.body.setAttribute('data-theme',_t.config.theme)}catch(e){}
+  STG.load();
+  var cfg=S.config;
+  function diffDays2(s){if(!s)return 0;try{var p=s.split('-');var su=Date.UTC(+p[0],+p[1]-1,+p[2]);var n=new Date();var nu=Date.UTC(n.getFullYear(),n.getMonth(),n.getDate());return Math.max(0,Math.floor((nu-su)/86400000))}catch(e){return 0}}
+  var de=document.getElementById('sp-days');if(de)de.textContent=diffDays2(cfg.startDate);
+  var te=document.getElementById('sp-title');if(te)te.innerHTML=(cfg.title||'Winnie & Vvs').replace(' & ',' <em>&amp;</em> ');
+  var se=document.getElementById('sp-since');if(se)se.textContent='Ensemble depuis le '+new Date(cfg.startDate+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
+  var pe=document.getElementById('sp-phrase');if(pe&&cfg.phrase)pe.textContent='\u00AB '+cfg.phrase+' \u00BB';
+  document.getElementById('sp-btn').onclick=function(){
+    var splash=document.getElementById('splash');
+    splash.style.transition='opacity .9s ease,transform .9s ease';
+    splash.style.opacity='0';splash.style.transform='scale(1.04)';
+    setTimeout(function(){window.location.href='carte.html'},400);
+  };
+});
+</script>
+</body>
+</html>

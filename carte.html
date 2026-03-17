@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Winnie et Vvs">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0D0D0D">
+<title>Carte &mdash; Winnie &amp; Vvs</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garant:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=1773763754">
+<link rel="stylesheet" href="fab.css?v=1773763754">
+<style>
+/* map-container plein écran - géré par fab.css */
+#map{width:100%;height:100%;background:#08080e}
+.leaflet-container{background:#08080e!important}
+.leaflet-control-zoom{border:1px solid var(--bd)!important;border-radius:var(--rsm)!important;overflow:hidden;box-shadow:var(--sh)!important}
+.leaflet-control-zoom a{background:var(--glass)!important;backdrop-filter:blur(10px)!important;color:var(--tx)!important;border-color:var(--bd)!important;font-size:16px!important;line-height:26px!important}
+.leaflet-popup-content-wrapper{background:var(--sur)!important;border:1px solid var(--bd)!important;border-radius:var(--r)!important;box-shadow:var(--sh)!important;color:var(--tx)!important;font-family:'Jost',sans-serif!important}
+.leaflet-popup-tip{background:var(--sur)!important}
+.leaflet-popup-content{color:var(--tx2)!important;font-family:'Jost',sans-serif!important;font-size:13px!important;margin:10px 14px!important}
+.leaflet-popup-close-button{color:var(--tx2)!important;font-size:18px!important;top:8px!important;right:8px!important}
+</style>
+<script>try{var _t=JSON.parse(localStorage.getItem('wv_app')||'{}');if(_t.config&&_t.config.theme)document.body.setAttribute('data-theme',_t.config.theme)}catch(e){}</script>
+</head>
+<body>
+
+<!-- FAB navigation injectée par fab.js -->
+
+<div id="toast"></div>
+<canvas id="cc" style="position:fixed;inset:0;z-index:1799;pointer-events:none"></canvas>
+
+<div id="cov" class="hidden" onclick="if(event.target===this)CN.no()">
+  <div class="cbox">
+    <h3 id="c-title" class="ctitle"></h3>
+    <p id="c-msg" class="cmsg"></p>
+    <div class="cbtns">
+      <button class="btn btn-g" onclick="CN.no()">Annuler</button>
+      <button class="btn btn-d" onclick="CN.yes()">Supprimer</button>
+    </div>
+  </div>
+</div>
+
+<div id="lb" class="hidden" onclick="LB.close()">
+  <button class="lbclose" onclick="LB.close()">&#10005;</button>
+  <button class="lbprev" onclick="event.stopPropagation();LB.prev()">&#8249;</button>
+  <button class="lbnext" onclick="event.stopPropagation();LB.next()">&#8250;</button>
+  <img id="lb-img" src="" alt="" onclick="event.stopPropagation()">
+</div>
+
+<!-- Sheets Souvenir Add/Edit -->
+<div class="ov hidden" id="sh-addmem" onclick="UI.ovc(event,this)">
+  <div class="sheet"><div class="handle"></div><h3 class="stitle">&#10022; Nouveau souvenir</h3>
+    <div id="am-badge" class="pbadge hidden">&#128205; Position s&#233;lectionn&#233;e</div>
+    <div class="field"><label>Nom *</label><input type="text" id="a-title" class="inp" placeholder="ex : Le Petit Ch&#226;telet"></div>
+    <div class="field"><label>Adresse</label>
+      <div class="geobox"><input type="text" id="a-addr" class="inp" placeholder="ex : Paris, France" oninput="GEO.live(this.value,'a-addr','a-gr','addmem')" autocomplete="off">
+        <button class="geobtn geobtn-p" onclick="GEO.fill('a-addr','am-badge','a-title')">Loc.</button></div>
+      <div id="a-gr" class="geores hidden"></div></div>
+    <div class="frow">
+      <div class="field"><label>Date *</label><input type="date" id="a-date" class="inp"></div>
+      <div class="field"><label>Cat&#233;gorie *</label><select id="a-cat" class="inp sel-inp"></select></div>
+    </div>
+    <div class="field"><label>Note</label><textarea id="a-note" class="inp ta" rows="3"></textarea></div>
+    <div class="field"><label>Photos &amp; Vid&#233;os</label>
+      <div class="uzone" onclick="document.getElementById('a-files').click()">&#128247; Appuyer pour ajouter
+        <input type="file" id="a-files" accept="image/*,video/*" multiple style="display:none" onchange="MEDIA.preview(this,'a-prev','addmem')"></div>
+      <div id="a-prev" class="mpgrid"></div></div>
+    <div class="field"><label>Favori</label><select id="a-fav" class="inp sel-inp"><option value="0">Non</option><option value="1">&#11088; Oui</option></select></div>
+    <div class="sfooter">
+      <button class="btn btn-g" onclick="UI.closeSheet('sh-addmem')">Annuler</button>
+      <button class="btn btn-p" onclick="MEM.save()">Enregistrer &#10022;</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov hidden" id="sh-editmem" onclick="UI.ovc(event,this)">
+  <div class="sheet"><div class="handle"></div><h3 class="stitle">&#9999;&#65039; Modifier</h3>
+    <input type="hidden" id="e-id">
+    <div class="field"><label>Nom *</label><input type="text" id="e-title" class="inp"></div>
+    <div class="field"><label>Adresse</label>
+      <div class="geobox"><input type="text" id="e-addr" class="inp" oninput="GEO.live(this.value,'e-addr','e-gr','editmem')" autocomplete="off">
+        <button class="geobtn" onclick="GEO.fill('e-addr',null,null)">&#128205;</button></div>
+      <div id="e-gr" class="geores hidden"></div></div>
+    <div class="frow">
+      <div class="field"><label>Date *</label><input type="date" id="e-date" class="inp"></div>
+      <div class="field"><label>Cat&#233;gorie</label><select id="e-cat" class="inp sel-inp"></select></div>
+    </div>
+    <div class="field"><label>Note</label><textarea id="e-note" class="inp ta" rows="3"></textarea></div>
+    <div class="field"><label>Favori</label><select id="e-fav" class="inp sel-inp"><option value="0">Non</option><option value="1">&#11088; Oui</option></select></div>
+    <div class="field"><label>M&#233;dias existants</label>
+      <div id="e-existing" class="exmed"></div>
+      <div class="uzone" onclick="document.getElementById('e-files').click()">&#128247; Ajouter
+        <input type="file" id="e-files" accept="image/*,video/*" multiple style="display:none" onchange="MEDIA.preview(this,'e-prev','editmem')"></div>
+      <div id="e-prev" class="mpgrid"></div></div>
+    <div class="sfooter">
+      <button class="btn btn-g" onclick="UI.closeSheet('sh-editmem')">Annuler</button>
+      <button class="btn btn-p" onclick="MEM.update()">Sauvegarder &#10022;</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov hidden" id="sh-addwish" onclick="UI.ovc(event,this)">
+  <div class="sheet"><div class="handle"></div><h3 class="stitle">&#128506; Wishlist</h3>
+    <div id="aw-badge" class="pbadge hidden">&#128205; Position s&#233;lectionn&#233;e</div>
+    <div class="field"><label>Nom *</label><input type="text" id="w-title" class="inp" placeholder="ex : Tokyo"></div>
+    <div class="field"><label>Ville / Pays</label>
+      <div class="geobox"><input type="text" id="w-addr" class="inp" oninput="GEO.live(this.value,'w-addr','w-gr','addwish')" autocomplete="off">
+        <button class="geobtn" onclick="GEO.fill('w-addr','aw-badge',null)">&#128205;</button></div>
+      <div id="w-gr" class="geores hidden"></div></div>
+    <div class="field"><label>Cat&#233;gorie</label><select id="w-cat" class="inp sel-inp"></select></div>
+    <div class="field"><label>Note</label><textarea id="w-note" class="inp ta" rows="2"></textarea></div>
+    <div class="sfooter">
+      <button class="btn btn-g" onclick="UI.closeSheet('sh-addwish')">Annuler</button>
+      <button class="btn btn-p" onclick="WISH.save()">Ajouter &#10022;</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov hidden" id="sh-cat" onclick="UI.ovc(event,this)">
+  <div class="sheet"><div class="handle"></div><h3 class="stitle" id="cat-stitle">&#10022; Categorie</h3>
+    <input type="hidden" id="cat-id"><input type="hidden" id="cat-type">
+    <div class="field"><label>Nom *</label><input type="text" id="cat-name" class="inp"></div>
+    <div class="frow">
+      <div class="field"><label>Ic&#244;ne *</label><input type="text" id="cat-icon" class="inp" maxlength="4"></div>
+      <div class="field"><label>Couleur</label><input type="color" id="cat-color" class="inp" style="padding:4px 6px;height:44px;cursor:pointer" value="#C9A96E"></div>
+    </div>
+    <div class="field" id="cat-anim-f"><label>Animation</label><select id="cat-anim" class="inp sel-inp"><option value="pulse">Pulsation</option><option value="bounce">Rebond</option><option value="glow">Halo</option><option value="none">Aucune</option></select></div>
+    <div class="sfooter">
+      <button class="btn btn-g" onclick="UI.closeSheet('sh-cat')">Annuler</button>
+      <button class="btn btn-p" onclick="CAT.save()">Cr&#233;er &#10022;</button>
+    </div>
+  </div>
+</div>
+
+<!-- Contrôles carte — tous position:fixed, enfants directs de body -->
+<div class="map-top" id="map-top">
+  <div class="map-mode-tabs">
+    <button class="modeTab active" data-m="memories" onclick="MAP.setMode('memories',this)">&#10022; Souvenirs</button>
+    <button class="modeTab" data-m="wishlist" onclick="MAP.setMode('wishlist',this)">&#128506; Wishlist</button>
+    <button class="modeTab" data-m="all" onclick="MAP.setMode('all',this)">&#9673; Tout</button>
+  </div>
+  <div class="map-subf" id="map-subf"></div>
+</div>
+<div class="map-bbtns" id="map-bbtns">
+  <button class="mabtn" onclick="UI.openSheet('sh-addmem')">&#10022; Souvenir</button>
+  <button class="mabtn mabtn-w" onclick="UI.openSheet('sh-addwish')">&#128506; Wishlist</button>
+</div>
+<button class="mloc" id="mloc" onclick="GEO.locate()">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8" stroke-width="1.5"/></svg>
+</button>
+
+<!-- La carte en fond -->
+<div id="map-container"><div id="map"></div></div>
+
+<div class="ov hidden" id="sh-wishdetail" onclick="UI.ovc(event,this)">
+  <div class="sheet"><div class="handle"></div><div class="wbadge">&#128506; Wishlist</div>
+    <h3 class="stitle" id="wd-title"></h3>
+    <div class="chiprow" id="wd-chips"></div>
+    <div id="wd-note" class="fs-note hidden"></div>
+    <div id="wd-acts" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="core.js?v=1773763754"></script>
+<script>
+var APP={_pos:null,_cw:null,_epos:null};
+var MEM={
+  save:function(){if(!UI.validate(['a-title','a-date']))return;var catId=document.getElementById('a-cat').value;if(!catId){UI.toast("Selectionne une categorie",'er');return}var pos=APP._pos||{lat:null,lng:null};APP._pos=null;var id=uid(),files=MEDIA.get('addmem');IDB.save(id,files,function(refs){var m={id:id,title:UI.get('a-title'),address:UI.get('a-addr'),lat:pos.lat,lng:pos.lng,date:UI.get('a-date'),catId:catId,note:UI.get('a-note'),fav:document.getElementById('a-fav').value==='1',photoRefs:refs,photos:[]};S.memories.push(m);STG.save();MEDIA.clear('addmem');DB.upsert('memories',{id:m.id,title:m.title,address:m.address||null,lat:m.lat||null,lng:m.lng||null,date:m.date,cat_id:m.catId,note:m.note||null,fav:m.fav,photo_refs:m.photoRefs||[],created_by:'winnie'},null);UI.closeSheet('sh-addmem');MAP.render();UI.toast('Souvenir ajoute !','ok');if(APP._cw){S.wishlist=S.wishlist.filter(function(w){return w.id!==APP._cw});APP._cw=null;STG.save();MAP.render()}})}
+};
+var WISH={
+  save:function(){if(!UI.validate(['w-title']))return;var pos=APP._pos||{lat:null,lng:null};APP._pos=null;var w={id:uid(),title:UI.get('w-title'),address:UI.get('w-addr'),lat:pos.lat,lng:pos.lng,catId:document.getElementById('w-cat').value,note:UI.get('w-note')};S.wishlist.push(w);STG.save();DB.upsert('wishlist',{id:w.id,title:w.title,address:w.address||null,lat:w.lat||null,lng:w.lng||null,cat_id:w.catId,note:w.note||null,created_by:'winnie'},null);UI.closeSheet('sh-addwish');MAP.render();UI.toast('Ajoute a la wishlist !','ok')},
+  detail:function(id){var w=S.wishlist.find(function(x){return x.id===id});if(!w)return;var cat=S.categories.find(function(c){return c.id===w.catId});document.getElementById('wd-title').textContent=w.title;var ch=document.getElementById('wd-chips');ch.innerHTML='';[cat?{l:cat.icon+' '+cat.name,s:'background:'+cat.color+'22;color:'+cat.color+';border-color:'+cat.color+'44'}:null,w.address?{l:w.address}:null].filter(Boolean).forEach(function(c){var sp=document.createElement('span');sp.className='chip';sp.textContent=c.l;if(c.s)sp.setAttribute('style',c.s);ch.appendChild(sp)});var ne=document.getElementById('wd-note');if(w.note){ne.textContent=w.note;ne.classList.remove('hidden')}else ne.classList.add('hidden');var acts=document.getElementById('wd-acts');acts.innerHTML='';var cb=document.createElement('button');cb.className='btn btn-p btn-sm';cb.textContent='Convertir en souvenir';cb.onclick=function(){WISH.convert(id)};acts.appendChild(cb);var db=document.createElement('button');db.className='btn btn-d btn-sm';db.textContent='Supprimer';db.onclick=function(){WISH.remove(id)};acts.appendChild(db);UI.openSheet('sh-wishdetail')},
+  convert:function(id){
+  var w=S.wishlist.find(function(x){return x.id===id});
+  if(!w)return;
+  if(!S.categories.filter(function(c){return c.type==='souvenir'}).length){
+    UI.toast("Cree d'abord une categorie",'er');return;
+  }
+  UI.closeSheet('sh-wishdetail');
+  APP._pos=w.lat?{lat:w.lat,lng:w.lng}:null;
+  APP._cw=id;
+  // Ouvrir sheet, PUIS remplir les champs après que _prefill a vidé
+  UI.openSheet('sh-addmem');
+  setTimeout(function(){
+    if(w.title){var ti=document.getElementById('a-title');if(ti)ti.value=w.title;}
+    if(w.address){
+      var ai=document.getElementById('a-addr');if(ai)ai.value=w.address;
+      var b=document.getElementById('am-badge');
+      if(b){b.textContent=w.address;b.classList.remove('hidden');}
+    }
+    if(w.note){var ni=document.getElementById('a-note');if(ni)ni.value=w.note;}
+  },50)},
+  remove:function(id){UI.confirm('Supprimer de la wishlist ?','',function(){S.wishlist=S.wishlist.filter(function(x){return x.id!==id});STG.save();DB.del('wishlist',id,null);UI.closeSheet('sh-wishdetail');MAP.render();UI.toast('Supprime','')})}
+};
+var MAP=(function(){
+  var _map=null,_layer=null,_markers={};
+  var _mode='memories',_cats=[];
+  var TDK='https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+  var TLT='https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+  function init(){
+    if(_map)return;
+    _map=L.map('map',{zoomControl:false,attributionControl:false,tap:true,tapTolerance:20});
+    _map.setView([S.config.mapLat||46,S.config.mapLng||8],S.config.mapZoom||4);
+    _layer=L.tileLayer(S.config.theme==='clair'?TLT:TDK,{subdomains:'abcd',maxZoom:19,errorTileUrl:''}).addTo(_map);
+    var _pt=null,_pl=null;
+    function _sp(ll){_pl=ll;_pt=setTimeout(function(){
+  if(!_pl)return;
+  var lat=parseFloat(_pl.lat.toFixed(6)),lng=parseFloat(_pl.lng.toFixed(6));
+  APP._pos={lat:lat,lng:lng};
+  if(navigator.vibrate)navigator.vibrate(50);
+  // Ouvrir le formulaire D'ABORD (prefill vide les champs)
+  UI.openSheet('sh-addmem');
+  // PUIS setter l'adresse après que le formulaire est ouvert
+  fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat='+lat+'&lon='+lng+'&accept-language=fr')
+    .then(function(r){return r.json()})
+    .then(function(d){
+      if(!d||!d.address)return;
+      var addr=fmtAddr(d.address)||shortAddr(d.display_name);
+      var b=document.getElementById('am-badge');
+      if(b){b.textContent=addr;b.classList.remove('hidden')}
+      var ai=document.getElementById('a-addr');
+      if(ai)ai.value=addr;
+      var ti=document.getElementById('a-title');
+      if(ti&&!ti.value.trim()&&d.address)
+        ti.value=(d.address.road||d.address.amenity||addr.split(',')[0]).trim();
+    }).catch(function(){});
+},600)}
+    function _cp(){clearTimeout(_pt);_pt=null;_pl=null}
+    _map.on('mousedown',function(e){if(!e.originalEvent._fp)_sp(e.latlng)});
+    _map.on('mouseup mousemove',_cp);
+    _map.on('contextmenu',function(e){L.DomEvent.preventDefault(e);_cp();APP._pos={lat:parseFloat(e.latlng.lat.toFixed(5)),lng:parseFloat(e.latlng.lng.toFixed(5))};UI.openSheet('sh-addmem')});
+    var _touchStart=null;
+    document.getElementById('map').addEventListener('touchstart',function(e){
+      if(e.touches.length!==1)return;
+      var t=e.touches[0];
+      _touchStart={x:t.clientX,y:t.clientY};
+      var rect=document.getElementById('map').getBoundingClientRect();
+      var ll=_map.containerPointToLatLng([t.clientX-rect.left,t.clientY-rect.top]);
+      _sp(ll);
+    },{passive:true});
+    document.getElementById('map').addEventListener('touchend',function(){
+      _touchStart=null;
+      _cp();
+    },{passive:true});
+    document.getElementById('map').addEventListener('touchmove',function(e){
+      // Annuler seulement si le doigt a vraiment bougé (> 8px)
+      if(_touchStart){
+        var t=e.touches[0];
+        var dx=Math.abs(t.clientX-_touchStart.x);
+        var dy=Math.abs(t.clientY-_touchStart.y);
+        if(dx>8||dy>8){_touchStart=null;_cp();}
+      }
+    },{passive:true});
+    render();
+  }
+  function render(){if(!_map)return;Object.keys(_markers).forEach(function(k){try{_markers[k].remove()}catch(e){}});_markers={};var items=_mode==='memories'?S.memories:_mode==='wishlist'?S.wishlist:S.memories.concat(S.wishlist);if(_cats.length)items=items.filter(function(x){return _cats.indexOf(x.catId)>=0});items.forEach(function(item){if(!item.lat||!item.lng)return;var iw=S.wishlist.some(function(w){return w.id===item.id});var cat=S.categories.find(function(c){return c.id===item.catId});var col=cat?cat.color:'#C9A96E',icon=cat?cat.icon:'📍';var h='<div style="width:40px;height:40px;transform:translateY(-50%)"><div style="width:36px;height:36px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,.2);box-shadow:0 4px 14px rgba(0,0,0,.5);cursor:pointer;background:'+col+(iw?';border-style:dashed':'')+';opacity:'+(iw?'.8':'1')+'"><span style="transform:rotate(45deg);font-size:15px;line-height:1">'+icon+'</span></div></div>';var m=L.marker([item.lat,item.lng],{icon:L.divIcon({html:h,className:'',iconSize:[40,40],iconAnchor:[20,40],popupAnchor:[0,-44]})});m.bindPopup('<div style="font-family:Jost,sans-serif;min-width:140px"><b style="color:'+col+';font-family:Cormorant Garant,serif;font-size:15px">'+(item.fav?'⭐ ':'')+esc(item.title)+'</b>'+(item.address?'<small style="display:block;color:var(--tx2);margin-top:3px">'+esc(item.address)+'</small>':'')+(item.date?'<small style="display:block;color:var(--tx2);margin-top:2px">'+fmtDateS(item.date)+'</small>':'')+'</div>',{maxWidth:220});m.on('click',function(e){e.originalEvent._fp=true;if(iw)WISH.detail(item.id)});m.addTo(_map);_markers[item.id]=m})}
+  return{
+    init:init,render:render,
+    setMode:function(mode,btn){_mode=mode;_cats=[];document.querySelectorAll('.modeTab').forEach(function(b){b.classList.toggle('active',b.dataset.m===mode)});MAP.renderSubs();render()},
+    renderSubs:function(){var sf=document.getElementById('map-subf');if(!sf)return;sf.innerHTML='';var type=_mode==='wishlist'?'wishlist':_mode==='memories'?'souvenir':null;var cats=type?S.categories.filter(function(c){return c.type===type}):S.categories;var ab=document.createElement('button');ab.className='subchip'+(!_cats.length?' on':'');ab.textContent='Tout';ab.onclick=function(){_cats=[];MAP.renderSubs();render()};sf.appendChild(ab);cats.forEach(function(cat){var on=_cats.indexOf(cat.id)>=0;var b=document.createElement('button');b.className='subchip'+(on?' on':'');b.textContent=cat.icon+' '+cat.name;if(on){b.style.background=cat.color;b.style.borderColor=cat.color;b.style.color='#0D0D0D'}b.onclick=function(){var i=_cats.indexOf(cat.id);if(i>=0)_cats.splice(i,1);else _cats.push(cat.id);MAP.renderSubs();render()};sf.appendChild(b)})  },
+    fly:function(lat,lng,z){if(_map)_map.flyTo([lat,lng],z||14,{duration:1.5})},
+    retile:function(){if(_map&&_layer)_layer.setUrl(S.config.theme==='clair'?TLT:TDK)},
+    get:function(){return _map},
+    inval:function(){setTimeout(function(){if(_map)_map.invalidateSize()},200)}
+  };
+})();
+document.addEventListener('DOMContentLoaded',function(){
+  FAB.init('map');
+  initCommon(function(){
+    NAV.cur='map';
+    MAP.init();MAP.renderSubs();MAP.inval();
+    window.addEventListener('resize',MAP.inval);
+    if(window.visualViewport)window.visualViewport.addEventListener('resize',MAP.inval);
+  });
+});
+</script>
+</body>
+</html>
