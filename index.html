@@ -863,9 +863,12 @@ var DB = {
   // GET all rows
   get: function(table, cb) {
     fetch(SUPA_URL + '/rest/v1/' + table + '?select=*', {headers: DB._headers})
-      .then(function(r){return r.json()})
-      .then(function(data){cb(null, data)})
-      .catch(function(e){cb(e, null)});
+      .then(function(r){
+        if(!r.ok){console.error('[DB] get error',table,r.status);}
+        return r.json();
+      })
+      .then(function(data){console.log('[DB] get ok',table,'rows:',Array.isArray(data)?data.length:data);cb(null, data)})
+      .catch(function(e){console.error('[DB] get catch',table,e);cb(e, null)});
   },
 
   // UPSERT (insert or update)
@@ -875,9 +878,12 @@ var DB = {
       headers: Object.assign({}, DB._headers, {'Prefer': 'resolution=merge-duplicates,return=representation'}),
       body: JSON.stringify(data)
     })
-    .then(function(r){return r.json()})
-    .then(function(d){if(cb)cb(null,d)})
-    .catch(function(e){if(cb)cb(e,null)});
+    .then(function(r){
+      if(!r.ok){r.text().then(function(t){console.error('[DB] upsert error',table,r.status,t)});}
+      return r.json();
+    })
+    .then(function(d){console.log('[DB] upsert ok',table,d);if(cb)cb(null,d)})
+    .catch(function(e){console.error('[DB] upsert catch',table,e);if(cb)cb(e,null)});
   },
 
   // DELETE by id
@@ -929,6 +935,39 @@ var DB = {
           note: row.note, fav: row.fav, photoRefs: row.photo_refs || [],
           photos: [], createdBy: row.created_by
         };
+        // Charger les photos depuis Supabase si pas en local
+        if(mem.photoRefs && mem.photoRefs.length) {
+          mem.photoRefs.forEach(function(ref){
+            IDB.getOne(ref.id, function(local){
+              if(!local){
+                // Photo pas en local, charger depuis Supabase
+                fetch(SUPA_URL+'/rest/v1/photos?id=eq.'+ref.id+'&select=*', {headers:DB._headers})
+                  .then(function(r){return r.json()})
+                  .then(function(photos){
+                    if(photos&&photos[0]&&photos[0].data){
+                      // Sauvegarder en local depuis base64
+                      var b64=photos[0].data;
+                      var parts=b64.split(',');
+                      var bin=atob(parts[1]||parts[0]);
+                      var arr=new Uint8Array(bin.length);
+                      for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+                      var blob=new Blob([arr],{type:photos[0].type});
+                      IDB.getOne(ref.id,function(existing){
+                        if(!existing){
+                          var openReq=indexedDB.open('wvmedia7',1);
+                          openReq.onsuccess=function(e){
+                            var db=e.target.result;
+                            var tx=db.transaction('media','readwrite');
+                            tx.objectStore('media').put({id:ref.id,mid:mem.id,type:photos[0].type,name:photos[0].name,data:blob,size:blob.size});
+                          };
+                        }
+                      });
+                    }
+                  }).catch(function(){});
+              }
+            });
+          });
+        }
         if(!existing) { S.memories.push(mem); changed = true; }
         else {
           // Update si différent
@@ -1240,10 +1279,24 @@ var IDB=(function(){
       open(function(d){
         if(!d){cb([]);return}
         var refs=[],tx=d.transaction(ST,'readwrite'),store=tx.objectStore(ST);
+        var pending=files.length;
         for(var i=0;i<files.length;i++){
           var id='med_'+uid();
-          refs.push({id:id,type:files[i].type,name:files[i].name,size:files[i].size});
+          var ref={id:id,type:files[i].type,name:files[i].name,size:files[i].size};
+          refs.push(ref);
           store.put({id:id,mid:mid,type:files[i].type,name:files[i].name,data:files[i],size:files[i].size});
+          // Upload base64 vers Supabase
+          (function(fileObj, refId, memId){
+            var reader = new FileReader();
+            reader.onload = function(e){
+              var b64 = e.target.result;
+              DB.upsert('photos', {
+                id: refId, mem_id: memId,
+                data: b64, type: fileObj.type, name: fileObj.name
+              }, null);
+            };
+            reader.readAsDataURL(fileObj);
+          })(files[i], id, mid);
         }
         tx.oncomplete=function(){cb(refs)};tx.onerror=function(){cb([])};
       });
