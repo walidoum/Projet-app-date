@@ -149,11 +149,23 @@ body{
   backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
   border-top:1px solid var(--bd);
   display:flex;
+  flex-direction:column;
   z-index:200;
-  /* FIX 6: padding-bottom robuste avec fallback 0px (pas de valeur par défaut trop grande) */
-  padding-bottom:env(safe-area-inset-bottom, 0px);
-  /* FIX 7: hauteur minimale fixe pour la zone de boutons (hors safe area) */
+  padding-bottom:0;
   padding-top:0;
+}
+/* Pseudo-element = seule approche fiable iOS PWA pour remplir la safe-area du bas */
+.bnav::after{
+  content:'';
+  display:block;
+  width:100%;
+  height:env(safe-area-inset-bottom, 0px);
+  background:var(--bg);
+  flex-shrink:0;
+}
+.bnav-row{
+  display:flex;
+  width:100%;
 }
 .nb{
   flex:1;
@@ -177,7 +189,7 @@ body{
   overflow-y:auto;overflow-x:hidden;
   -webkit-overflow-scrolling:touch;
   background:var(--bg);z-index:50;
-  /* FIX 9: padding-bottom = hauteur nav + safe area bottom */
+  /* padding-bottom = hauteur des boutons nav SEULEMENT (pas safe area — gérée par ::after) */
   padding-bottom:calc(58px + env(safe-area-inset-bottom, 0px));
 }
 .page.hidden{pointer-events:none!important;opacity:0!important}
@@ -197,10 +209,9 @@ body{
 /* ══ MAP ══ */
 .mapwrap{
   position:absolute;
-  /* FIX 10: top avec safe-area-inset-top */
   top:0;
   left:0;right:0;
-  /* FIX 11: bottom = hauteur nav (58px) + safe-area-inset-bottom */
+  /* bottom = hauteur boutons (58px) + safe-area-inset-bottom (gérée séparément par ::after) */
   bottom:calc(58px + env(safe-area-inset-bottom, 0px));
   overflow:hidden;
   z-index:1;
@@ -217,7 +228,7 @@ body{
 .leaflet-popup-close-button{color:var(--tx2)!important;font-size:18px!important;top:8px!important;right:8px!important}
 
 /* Map topbar */
-.map-filters-wrap{position:absolute;top:14px;left:50%;transform:translateX(-50%);width:min(460px,calc(100vw - 12px));z-index:500;display:flex;flex-direction:column;gap:6px}
+.map-filters-wrap{position:absolute;top:max(14px,env(safe-area-inset-top,14px));left:50%;transform:translateX(-50%);width:min(460px,calc(100vw - 12px));z-index:500;display:flex;flex-direction:column;gap:6px}
 .mtop{display:flex;gap:8px;width:100%;justify-content:center}
 .map-mode-tabs{display:flex;gap:4px;flex-shrink:0;background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid var(--bd);border-radius:50px;padding:3px;box-shadow:var(--sh)}
 .modeTab{padding:5px 12px;border:none;border-radius:50px;font-family:'Jost',sans-serif;font-size:11px;font-weight:500;cursor:pointer;background:transparent;color:var(--tx2);transition:all .2s;white-space:nowrap}
@@ -689,11 +700,14 @@ body{
 
   <!-- BOTTOM NAV -->
   <nav class="bnav" id="bnav">
-    <button class="nb" data-p="list" onclick="NAV.go('list',this)"><span class="ni">📋</span><span>Liste</span></button>
-    <button class="nb" data-p="stats" onclick="NAV.go('stats',this)"><span class="ni">📊</span><span>Stats</span></button>
-    <button class="nb active" data-p="map" onclick="NAV.go('map',this)"><span class="ni">🗺️</span><span>Carte</span></button>
-    <button class="nb" data-p="journal" onclick="NAV.go('journal',this)"><span class="ni">📖</span><span>Journal</span></button>
-    <button class="nb" data-p="settings" onclick="NAV.go('settings',this)"><span class="ni">⚙️</span><span>Réglages</span></button>
+    <div class="bnav-row">
+      <button class="nb" data-p="list" onclick="NAV.go('list',this)"><span class="ni">📋</span><span>Liste</span></button>
+      <button class="nb" data-p="stats" onclick="NAV.go('stats',this)"><span class="ni">📊</span><span>Stats</span></button>
+      <button class="nb active" data-p="map" onclick="NAV.go('map',this)"><span class="ni">🗺️</span><span>Carte</span></button>
+      <button class="nb" data-p="journal" onclick="NAV.go('journal',this)"><span class="ni">📖</span><span>Journal</span></button>
+      <button class="nb" data-p="settings" onclick="NAV.go('settings',this)"><span class="ni">⚙️</span><span>Réglages</span></button>
+    </div>
+    <!-- Zone safe-area-inset-bottom gérée par .bnav::after -->
   </nav>
 
   <!-- LIST PAGE -->
