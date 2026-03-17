@@ -9,6 +9,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0D0D0D">
 <title>Réglages — Winnie & Vvs</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garant:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 
 <script>try{var _t=JSON.parse(localStorage.getItem('wv_app')||'{}');if(_t.config&&_t.config.theme)document.body.setAttribute('data-theme',_t.config.theme)}catch(e){}</script>
@@ -176,30 +178,92 @@
 <script>
 var SETTINGS={
   render:function(){
-    var el=document.getElementById('settings-body');el.innerHTML='';
+    var el=document.getElementById('settings-body');
+    el.innerHTML='';
     var cats=S.categories.filter(function(c){return c.type==='souvenir'});
     var wcats=S.categories.filter(function(c){return c.type==='wishlist'});
-    var TDEFS=[{id:'romantique',name:'Romantique',p:'linear-gradient(135deg,#C9A96E,#E8C4C4)'},{id:'minimaliste',name:'Minimal',p:'linear-gradient(135deg,#1c1c1c,#888)'},{id:'mystique',name:'Mystique',p:'linear-gradient(135deg,#1a0a3e,#b08be8)'},{id:'nature',name:'Nature',p:'linear-gradient(135deg,#0f1e12,#6fbf7a)'},{id:'automne',name:'Automne',p:'linear-gradient(135deg,#1e1208,#d4843a)'},{id:'clair',name:'Clair',p:'linear-gradient(135deg,#f5f0eb,#9a6e3a)'},{id:'ocean',name:'Ocean',p:'linear-gradient(135deg,#040d18,#38b2dc)'},{id:'rosegold',name:'Rose Gold',p:'linear-gradient(135deg,#1a0f0f,#e88c8c)'},{id:'custom',name:'Perso',p:'linear-gradient(135deg,var(--acc),var(--acc2))'}];
-    var html='<div class="sshd2">Themes</div><div class="tgrid">';
-    TDEFS.forEach(function(t){html+='<div class="tcard'+(S.config.theme===t.id?' on':'')+'" data-t="'+t.id+'" onclick="'+(t.id==='custom'?"UI.openSheet('sh-customtheme')":'THEMES.apply(''+t.id+'')')+'">'+'<div class="tprev" style="background:'+t.p+'"></div><div class="tname">'+t.name+'</div></div>'});
-    html+='</div>';
-    html+='<div class="sshd2">Categories Souvenirs</div><div id="s-cats"></div><button class="btn btn-g btn-full" style="margin-top:4px" onclick="CAT.newCat('souvenir')">+ Nouvelle categorie</button>';
-    html+='<div class="sshd2">Categories Wishlist</div><div id="s-wcats"></div><button class="btn btn-g btn-full" style="margin-top:4px" onclick="CAT.newCat('wishlist')">+ Categorie wishlist</button>';
-    html+='<div class="sshd2">Page d accueil</div><div class="sitem" onclick="UI.openSheet('sh-splash')"><div><div class="slbl">Titre et phrase</div><div class="ssub">'+esc(S.config.title)+' &middot; depuis '+fmtDate(S.config.startDate)+'</div></div></div>';
-    html+='<div class="sshd2">Dates speciales</div><div id="s-sdates"></div><button class="btn btn-g btn-full" style="margin-top:4px" onclick="UI.openSheet('sh-sdate')">+ Date speciale</button>';
-    html+='<div class="sshd2">Donnees</div><div class="sitem" onclick="STG.exportJSON()"><div class="slbl">Exporter JSON</div></div><div class="sitem" onclick="document.getElementById('imp-f').click()"><div class="slbl">Importer sauvegarde</div></div><input type="file" id="imp-f" accept=".json" style="display:none" onchange="STG.importJSON(this.files[0])"><div class="sitem" onclick="SETTINGS.reset()"><div class="slbl" style="color:var(--err)">Reinitialiser tout</div></div>';
-    el.innerHTML=html;
-    function rcl(cid,arr){var c=document.getElementById(cid);if(!c)return;c.innerHTML='';if(!arr.length){c.innerHTML='<div style="font-size:13px;color:var(--tx2);padding:8px 0">Aucune — creez-en une !</div>';return}arr.forEach(function(cat){var r=document.createElement('div');r.className='catrow';r.innerHTML='<div class="catdot" style="background:'+cat.color+'"></div><span style="font-size:16px">'+cat.icon+'</span><span class="catnm">'+esc(cat.name)+'</span><button class="catact" onclick="CAT.edit(''+cat.id+'')">Modifier</button><button class="catact" onclick="CAT.del(''+cat.id+'')" style="color:var(--err)">Supprimer</button>';c.appendChild(r)})}
+
+    function mkh(tag,cls,html){var e=document.createElement(tag);if(cls)e.className=cls;if(html)e.innerHTML=html;return e}
+    function sec(title){return mkh('div','','<div class="sshd2">'+title+'</div>')}
+
+    // Themes
+    el.appendChild(sec('Themes'));
+    var tg=mkh('div','tgrid');
+    [{id:'romantique',name:'Romantique',p:'linear-gradient(135deg,#C9A96E,#E8C4C4)'},
+     {id:'minimaliste',name:'Minimal',p:'linear-gradient(135deg,#1c1c1c,#888)'},
+     {id:'mystique',name:'Mystique',p:'linear-gradient(135deg,#1a0a3e,#b08be8)'},
+     {id:'nature',name:'Nature',p:'linear-gradient(135deg,#0f1e12,#6fbf7a)'},
+     {id:'automne',name:'Automne',p:'linear-gradient(135deg,#1e1208,#d4843a)'},
+     {id:'clair',name:'Clair',p:'linear-gradient(135deg,#f5f0eb,#9a6e3a)'},
+     {id:'ocean',name:'Ocean',p:'linear-gradient(135deg,#040d18,#38b2dc)'},
+     {id:'rosegold',name:'Rose Gold',p:'linear-gradient(135deg,#1a0f0f,#e88c8c)'},
+     {id:'custom',name:'Perso',p:'linear-gradient(135deg,var(--acc),var(--acc2))'}
+    ].forEach(function(t){
+      var d=mkh('div','tcard'+(S.config.theme===t.id?' on':''));
+      d.dataset.t=t.id;
+      d.innerHTML='<div class="tprev" style="background:'+t.p+'"></div><div class="tname">'+t.name+'</div>';
+      d.onclick=t.id==='custom'?function(){UI.openSheet('sh-customtheme')}:(function(tid){return function(){THEMES.apply(tid)}})(t.id);
+      tg.appendChild(d);
+    });
+    el.appendChild(tg);
+
+    // Categories souvenirs
+    el.appendChild(sec('Categories Souvenirs'));
+    el.appendChild(mkh('div','','<div id="s-cats"></div>'));
+    var bn=mkh('button','btn btn-g btn-full');bn.style.marginTop='4px';bn.textContent='+ Nouvelle categorie';bn.onclick=function(){CAT.newCat('souvenir')};el.appendChild(bn);
+
+    // Categories wishlist
+    el.appendChild(sec('Categories Wishlist'));
+    el.appendChild(mkh('div','','<div id="s-wcats"></div>'));
+    var bw=mkh('button','btn btn-g btn-full');bw.style.marginTop='4px';bw.textContent='+ Categorie wishlist';bw.onclick=function(){CAT.newCat('wishlist')};el.appendChild(bw);
+
+    // Page accueil
+    el.appendChild(sec("Page d'accueil"));
+    var si=mkh('div','sitem');
+    si.innerHTML='<div><div class="slbl">Titre et phrase</div><div class="ssub">'+esc(S.config.title)+' · depuis '+fmtDate(S.config.startDate)+'</div></div>';
+    si.onclick=function(){UI.openSheet('sh-splash')};el.appendChild(si);
+
+    // Dates speciales
+    el.appendChild(sec('Dates speciales'));
+    el.appendChild(mkh('div','','<div id="s-sdates"></div>'));
+    var bds=mkh('button','btn btn-g btn-full');bds.style.marginTop='4px';bds.textContent='+ Date speciale';bds.onclick=function(){UI.openSheet('sh-sdate')};el.appendChild(bds);
+
+    // Donnees
+    el.appendChild(sec('Donnees'));
+    var exp=mkh('div','sitem','<div class="slbl">Exporter JSON</div>');exp.onclick=function(){STG.exportJSON()};el.appendChild(exp);
+    var imp=mkh('div','sitem','<div class="slbl">Importer sauvegarde</div><input type="file" id="imp-f" accept=".json" style="display:none">');
+    imp.querySelector('.slbl').onclick=function(){document.getElementById('imp-f').click()};
+    imp.querySelector('#imp-f').onchange=function(){STG.importJSON(this.files[0])};
+    el.appendChild(imp);
+    var rst=mkh('div','sitem','<div class="slbl" style="color:var(--err)">Reinitialiser tout</div>');rst.onclick=function(){SETTINGS.reset()};el.appendChild(rst);
+
+    // Remplir categories
+    function rcl(cid,arr){
+      var c=document.getElementById(cid);if(!c)return;c.innerHTML='';
+      if(!arr.length){c.innerHTML='<div style="font-size:13px;color:var(--tx2);padding:8px 0">Aucune — creez-en une !</div>';return}
+      arr.forEach(function(cat){
+        var r=mkh('div','catrow');
+        r.innerHTML='<div class="catdot" style="background:'+cat.color+'"></div><span style="font-size:16px">'+cat.icon+'</span><span class="catnm">'+esc(cat.name)+'</span>';
+        var mb=mkh('button','catact');mb.textContent='Modifier';mb.onclick=(function(id){return function(){CAT.edit(id)}})(cat.id);r.appendChild(mb);
+        var db=mkh('button','catact');db.style.color='var(--err)';db.textContent='Supprimer';db.onclick=(function(id){return function(){CAT.del(id)}})(cat.id);r.appendChild(db);
+        c.appendChild(r);
+      });
+    }
     rcl('s-cats',cats);rcl('s-wcats',wcats);
-    var sd=document.getElementById('s-sdates');if(sd){sd.innerHTML='';S.specialDates.forEach(function(s){var r=document.createElement('div');r.className='catrow';r.innerHTML='<span style="font-size:16px">'+(s.emojis||'').split(' ')[0]+'</span><span class="catnm">'+esc(s.name)+' &mdash; '+s.day+'/'+s.month+'</span><button class="catact" onclick="SETTINGS.delSD(''+s.id+'')" style="color:var(--err)">Supprimer</button>';sd.appendChild(r)})}
+    var sdEl=document.getElementById('s-sdates');
+    if(sdEl){sdEl.innerHTML='';S.specialDates.forEach(function(s){
+      var r=mkh('div','catrow');
+      r.innerHTML='<span style="font-size:16px">'+((s.emojis||'').split(' ')[0]||'&#127882;')+'</span><span class="catnm">'+esc(s.name)+' — '+s.day+'/'+s.month+'</span>';
+      var db=mkh('button','catact');db.style.color='var(--err)';db.textContent='Supprimer';db.onclick=(function(id){return function(){SETTINGS.delSD(id)}})(s.id);r.appendChild(db);
+      sdEl.appendChild(r);
+    })}
   },
   saveSplash:function(){S.config.title=UI.get('cfg-title')||'Winnie & Vvs';S.config.startDate=UI.get('cfg-date')||'2025-09-15';S.config.phrase=UI.get('cfg-phrase')||'';STG.save();DB.setCfg('app_config',S.config);UI.closeSheet('sh-splash');SETTINGS.render();UI.toast('Mis a jour !','ok')},
   saveSDate:function(){var name=UI.get('sd-name');if(!name){UI.toast('Nom obligatoire','er');return}S.specialDates.push({id:uid(),name:name,day:parseInt(UI.get('sd-day')),month:parseInt(document.getElementById('sd-month').value),msg:UI.get('sd-msg'),emojis:UI.get('sd-emojis')||'❤️ ✨ 💕'});STG.save();UI.closeSheet('sh-sdate');SETTINGS.render();UI.toast('Date creee !','ok')},
   delSD:function(id){S.specialDates=S.specialDates.filter(function(s){return s.id!==id});STG.save();SETTINGS.render()},
   reset:function(){UI.confirm('Reinitialiser ?','Toutes vos donnees seront supprimees.',function(){localStorage.clear();setTimeout(function(){location.reload()},300)})}
 };
-document.addEventListener('DOMContentLoaded',function(){SETTINGS.render()});
+document.addEventListener('DOMContentLoaded',function(){initCommon(function(){NAV.cur='settings';SETTINGS.render()});});
 </script>
-<script>document.addEventListener('DOMContentLoaded',function(){initCommon();NAV.cur='settings';});</script>
 </body>
 </html>

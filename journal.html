@@ -9,6 +9,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0D0D0D">
 <title>Journal — Winnie & Vvs</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garant:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 
 <script>try{var _t=JSON.parse(localStorage.getItem('wv_app')||'{}');if(_t.config&&_t.config.theme)document.body.setAttribute('data-theme',_t.config.theme)}catch(e){}</script>
@@ -161,8 +163,7 @@ var JOURNAL={
   edit:function(id){var j=S.journal.find(function(x){return x.id===id});if(!j)return;document.getElementById('j-stitle').textContent='Modifier';UI.val('j-id',j.id);UI.val('j-title',j.title);UI.val('j-emoji',j.emoji||'');UI.val('j-date',j.date);UI.val('j-text',j.text);var lnk=document.getElementById('j-link');lnk.innerHTML='<option value="">Aucun</option>';S.memories.forEach(function(m){var o=document.createElement('option');o.value=m.id;o.textContent=m.title;if(m.id===j.link)o.selected=true;lnk.appendChild(o)});UI.openSheet('sh-addjournal')},
   remove:function(id){UI.confirm('Supprimer ?','',function(){S.journal=S.journal.filter(function(j){return j.id!==id});STG.save();DB.del('journal',id,null);JOURNAL.render();UI.toast('Supprime','')})}
 };
-document.addEventListener('DOMContentLoaded',function(){JOURNAL.render()});
+document.addEventListener('DOMContentLoaded',function(){initCommon(function(){NAV.cur='journal';JOURNAL.render()});});
 </script>
-<script>document.addEventListener('DOMContentLoaded',function(){initCommon();NAV.cur='journal';});</script>
 </body>
 </html>

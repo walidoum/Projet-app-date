@@ -10,6 +10,8 @@
 <meta name="theme-color" content="#0D0D0D">
 <title>Carte &mdash; Winnie &amp; Vvs</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garant:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <style>
 /* Carte occupe tout l'espace hors navbar */
@@ -224,11 +226,12 @@ var MAP=(function(){
   };
 })();
 document.addEventListener('DOMContentLoaded',function(){
-  initCommon();NAV.cur='map';
-  STG.load();THEMES.restore();DB.sync();
-  MAP.init();MAP.renderSubs();MAP.inval();
-  window.addEventListener('resize',MAP.inval);
-  if(window.visualViewport)window.visualViewport.addEventListener('resize',MAP.inval);
+  initCommon(function(){
+    NAV.cur='map';
+    MAP.init();MAP.renderSubs();MAP.inval();
+    window.addEventListener('resize',MAP.inval);
+    if(window.visualViewport)window.visualViewport.addEventListener('resize',MAP.inval);
+  });
 });
 </script>
 </body>

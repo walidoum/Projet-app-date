@@ -1,0 +1,13 @@
+{
+  "name": "Winnie & Vvs",
+  "short_name": "Winnie & Vvs",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0D0D0D",
+  "theme_color": "#0D0D0D",
+  "orientation": "portrait",
+  "icons": [
+    {"src": "https://raw.githubusercontent.com/walidoum/Projet-app-date/main/icon.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "https://raw.githubusercontent.com/walidoum/Projet-app-date/main/icon.png", "sizes": "512x512", "type": "image/png"}
+  ]
+}

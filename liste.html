@@ -9,6 +9,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0D0D0D">
 <title>Liste — Winnie & Vvs</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garant:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 
 <script>try{var _t=JSON.parse(localStorage.getItem('wv_app')||'{}');if(_t.config&&_t.config.theme)document.body.setAttribute('data-theme',_t.config.theme)}catch(e){}</script>
@@ -169,8 +171,7 @@ var LIST={
   _vth:function(blob,cb){var u=URL.createObjectURL(blob);var v=document.createElement('video');v.muted=true;v.playsInline=true;v.src=u;v.currentTime=0.5;v.onseeked=function(){try{var c=document.createElement('canvas');c.width=v.videoWidth||320;c.height=v.videoHeight||240;c.getContext('2d').drawImage(v,0,0,c.width,c.height);URL.revokeObjectURL(u);cb(c.toDataURL('image/jpeg',.8))}catch(e){URL.revokeObjectURL(u);cb(null)}};v.onerror=function(){URL.revokeObjectURL(u);cb(null)};v.load()},
   _inj:function(card,url,h,col,m,cat,isVid){var p=card.querySelector('.mcpat');if(!p)return;p.innerHTML='<img src="'+url+'" style="width:100%;height:'+h+'px;object-fit:cover;display:block" alt="'+esc(m.title)+'">'+(isVid?'<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-60%);width:36px;height:36px;background:rgba(0,0,0,.55);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px">&#9654;&#65039;</div>':'')+'<div class="mcover"></div>'+(m.fav?'<div class="mcfav">&#11088;</div>':'')+'<div class="mccat" style="background:'+col+'30;color:'+col+';border:1px solid '+col+'50">'+(cat?cat.icon+' '+cat.name:'')+'</div><div class="mcbody"><div class="mctitle">'+esc(m.title)+'</div><div class="mcdate">'+fmtDate(m.date)+'</div></div>'}
 };
-document.addEventListener('DOMContentLoaded',function(){LIST.render()});
+document.addEventListener('DOMContentLoaded',function(){initCommon(function(){NAV.cur='list';LIST.render()});});
 </script>
-<script>document.addEventListener('DOMContentLoaded',function(){initCommon();NAV.cur='list';});</script>
 </body>
 </html>

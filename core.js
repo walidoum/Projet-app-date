@@ -174,17 +174,17 @@ var CAT={
 };
 
 // ── NAV ───────────────────────────────────────────────────
-// Chaque page est un fichier HTML séparé — la navigation = window.location
 var NAV={
   cur: (function(){
     var p=window.location.pathname.split('/').pop().replace('.html','');
-    return p&&p!=='index'?p:'map';
+    var map={liste:'list',stats:'stats',carte:'map',journal:'journal',reglages:'settings'};
+    return map[p]||'map';
   })(),
   go:function(page){
-    // Map vers fichier
     var pages={list:'liste.html',stats:'stats.html',map:'carte.html',journal:'journal.html',settings:'reglages.html'};
     var file=pages[page]||'carte.html';
-    window.location.href=file;
+    // replaceState évite d'empiler l'historique → pas de bouton retour arrière Safari
+    window.location.replace(file);
   },
   setActive:function(){
     var page=NAV.cur;
@@ -195,15 +195,19 @@ var NAV={
 };
 
 // ── Init commun ───────────────────────────────────────────
-function initCommon(){
-  // Thème immédiat
+function initCommon(pageCallback){
+  // Thème immédiat depuis localStorage
   try{var _t=JSON.parse(localStorage.getItem('wv_app')||'{}');if(_t.config&&_t.config.theme)document.body.setAttribute('data-theme',_t.config.theme)}catch(e){}
-  // Charger données
+  // Charger les données EN PREMIER (synchrone depuis localStorage)
   STG.load();
+  // Restaurer le thème avec les vraies données
   THEMES.restore();
-  DB.sync();
   // Navbar active
   NAV.setActive();
+  // Lancer le callback de page MAINTENANT que les données sont chargées
+  if(pageCallback)pageCallback();
+  // Puis sync Supabase en arrière-plan
+  DB.sync();
   // Fermeture géo au clic
   document.addEventListener('click',function(e){if(!e.target.closest('.geobox')&&!e.target.closest('.geores'))document.querySelectorAll('.geores').forEach(function(el){el.classList.add('hidden')})});
   // Escape

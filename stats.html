@@ -9,6 +9,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0D0D0D">
 <title>Stats — Winnie & Vvs</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garant:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 
 <script>try{var _t=JSON.parse(localStorage.getItem('wv_app')||'{}');if(_t.config&&_t.config.theme)document.body.setAttribute('data-theme',_t.config.theme)}catch(e){}</script>
@@ -155,8 +157,7 @@ function renderStats(){
   if(tc.length){var bs=document.createElement('div');bs.innerHTML='<div class="sshd">Villes les plus visitees</div>';tc.forEach(function(c){bs.innerHTML+='<div class="barrow"><div class="barlbl">'+esc(c[0])+'</div><div class="bartrack"><div class="barfill" style="width:0%;background:var(--acc)" data-w="'+Math.round(c[1]/mx*100)+'%"></div></div><div class="barcnt">'+c[1]+'</div></div>'});el.appendChild(bs);setTimeout(function(){bs.querySelectorAll('.barfill').forEach(function(b){b.style.width=b.dataset.w})},100)}
   var tl=document.createElement('div');tl.innerHTML='<div class="sshd">Notre timeline</div>';sorted.forEach(function(m,i){var cat=S.categories.find(function(c){return c.id===m.catId});var col=cat?cat.color:'var(--acc)';var d=document.createElement('div');d.className='tlitem';d.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;width:14px"><div class="tldot" style="background:'+col+'"></div>'+(i<sorted.length-1?'<div style="width:1px;flex:1;background:var(--bd);margin-top:4px;min-height:20px"></div>':'')+'</div><div><div class="tltitle">'+( cat?cat.icon+' ':'')+esc(m.title)+'</div><div class="tldate">'+fmtDate(m.date)+(m.address?' · '+esc(m.address):'')+'</div></div>';tl.appendChild(d)});el.appendChild(tl);
 }
-document.addEventListener('DOMContentLoaded',function(){renderStats()});
+document.addEventListener('DOMContentLoaded',function(){initCommon(function(){NAV.cur='stats';renderStats()});});
 </script>
-<script>document.addEventListener('DOMContentLoaded',function(){initCommon();NAV.cur='stats';});</script>
 </body>
 </html>
