@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Winnie et Vvs">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0D0D0D">
+<title>Stats — Winnie & Vvs</title>
+<link rel="stylesheet" href="style.css">
+
+<script>try{var _t=JSON.parse(localStorage.getItem('wv_app')||'{}');if(_t.config&&_t.config.theme)document.body.setAttribute('data-theme',_t.config.theme)}catch(e){}</script>
+</head>
+<body>
+
+<nav class="bnav">
+  <button class="nb" data-p="list" onclick="NAV.go('list')"><span class="ni">&#128203;</span><span>Liste</span></button>
+  <button class="nb" data-p="stats" onclick="NAV.go('stats')"><span class="ni">&#128202;</span><span>Stats</span></button>
+  <button class="nb" data-p="map" onclick="NAV.go('map')"><span class="ni">&#128506;</span><span>Carte</span></button>
+  <button class="nb" data-p="journal" onclick="NAV.go('journal')"><span class="ni">&#128214;</span><span>Journal</span></button>
+  <button class="nb" data-p="settings" onclick="NAV.go('settings')"><span class="ni">&#9881;&#65039;</span><span>R&#233;glages</span></button>
+</nav>
+
+<div id="toast"></div>
+<canvas id="cc" style="position:fixed;inset:0;z-index:1799;pointer-events:none"></canvas>
+
+<div id="cov" class="hidden" onclick="if(event.target===this)CN.no()">
+  <div class="cbox">
+    <h3 id="c-title" class="ctitle"></h3>
+    <p id="c-msg" class="cmsg"></p>
+    <div class="cbtns">
+      <button class="btn btn-g" onclick="CN.no()">Annuler</button>
+      <button class="btn btn-d" onclick="CN.yes()">Supprimer</button>
+    </div>
+  </div>
+</div>
+
+<div id="lb" class="hidden" onclick="LB.close()">
+  <button class="lbclose" onclick="LB.close()">&#10005;</button>
+  <button class="lbprev" onclick="event.stopPropagation();LB.prev()">&#8249;</button>
+  <button class="lbnext" onclick="event.stopPropagation();LB.next()">&#8250;</button>
+  <img id="lb-img" src="" alt="" onclick="event.stopPropagation()">
+</div>
+
+<!-- Sheets Souvenir Add/Edit -->
+<div class="ov hidden" id="sh-addmem" onclick="UI.ovc(event,this)">
+  <div class="sheet"><div class="handle"></div><h3 class="stitle">&#10022; Nouveau souvenir</h3>
+    <div id="am-badge" class="pbadge hidden">&#128205; Position s&#233;lectionn&#233;e</div>
+    <div class="field"><label>Nom *</label><input type="text" id="a-title" class="inp" placeholder="ex : Le Petit Ch&#226;telet"></div>
+    <div class="field"><label>Adresse</label>
+      <div class="geobox"><input type="text" id="a-addr" class="inp" placeholder="ex : Paris, France" oninput="GEO.live(this.value,'a-addr','a-gr','addmem')" autocomplete="off">
+        <button class="geobtn geobtn-p" onclick="GEO.fill('a-addr','am-badge','a-title')">Loc.</button></div>
+      <div id="a-gr" class="geores hidden"></div></div>
+    <div class="frow">
+      <div class="field"><label>Date *</label><input type="date" id="a-date" class="inp"></div>
+      <div class="field"><label>Cat&#233;gorie *</label><select id="a-cat" class="inp sel-inp"></select></div>
+    </div>
+    <div class="field"><label>Note</label><textarea id="a-note" class="inp ta" rows="3"></textarea></div>
+    <div class="field"><label>Photos &amp; Vid&#233;os</label>
+      <div class="uzone" onclick="document.getElementById('a-files').click()">&#128247; Appuyer pour ajouter
+        <input type="file" id="a-files" accept="image/*,video/*" multiple style="display:none" onchange="MEDIA.preview(this,'a-prev','addmem')"></div>
+      <div id="a-prev" class="mpgrid"></div></div>
+    <div class="field"><label>Favori</label><select id="a-fav" class="inp sel-inp"><option value="0">Non</option><option value="1">&#11088; Oui</option></select></div>
+    <div class="sfooter">
+      <button class="btn btn-g" onclick="UI.closeSheet('sh-addmem')">Annuler</button>
+      <button class="btn btn-p" onclick="MEM.save()">Enregistrer &#10022;</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov hidden" id="sh-editmem" onclick="UI.ovc(event,this)">
+  <div class="sheet"><div class="handle"></div><h3 class="stitle">&#9999;&#65039; Modifier</h3>
+    <input type="hidden" id="e-id">
+    <div class="field"><label>Nom *</label><input type="text" id="e-title" class="inp"></div>
+    <div class="field"><label>Adresse</label>
+      <div class="geobox"><input type="text" id="e-addr" class="inp" oninput="GEO.live(this.value,'e-addr','e-gr','editmem')" autocomplete="off">
+        <button class="geobtn" onclick="GEO.fill('e-addr',null,null)">&#128205;</button></div>
+      <div id="e-gr" class="geores hidden"></div></div>
+    <div class="frow">
+      <div class="field"><label>Date *</label><input type="date" id="e-date" class="inp"></div>
+      <div class="field"><label>Cat&#233;gorie</label><select id="e-cat" class="inp sel-inp"></select></div>
+    </div>
+    <div class="field"><label>Note</label><textarea id="e-note" class="inp ta" rows="3"></textarea></div>
+    <div class="field"><label>Favori</label><select id="e-fav" class="inp sel-inp"><option value="0">Non</option><option value="1">&#11088; Oui</option></select></div>
+    <div class="field"><label>M&#233;dias existants</label>
+      <div id="e-existing" class="exmed"></div>
+      <div class="uzone" onclick="document.getElementById('e-files').click()">&#128247; Ajouter
+        <input type="file" id="e-files" accept="image/*,video/*" multiple style="display:none" onchange="MEDIA.preview(this,'e-prev','editmem')"></div>
+      <div id="e-prev" class="mpgrid"></div></div>
+    <div class="sfooter">
+      <button class="btn btn-g" onclick="UI.closeSheet('sh-editmem')">Annuler</button>
+      <button class="btn btn-p" onclick="MEM.update()">Sauvegarder &#10022;</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov hidden" id="sh-addwish" onclick="UI.ovc(event,this)">
+  <div class="sheet"><div class="handle"></div><h3 class="stitle">&#128506; Wishlist</h3>
+    <div id="aw-badge" class="pbadge hidden">&#128205; Position s&#233;lectionn&#233;e</div>
+    <div class="field"><label>Nom *</label><input type="text" id="w-title" class="inp" placeholder="ex : Tokyo"></div>
+    <div class="field"><label>Ville / Pays</label>
+      <div class="geobox"><input type="text" id="w-addr" class="inp" oninput="GEO.live(this.value,'w-addr','w-gr','addwish')" autocomplete="off">
+        <button class="geobtn" onclick="GEO.fill('w-addr','aw-badge',null)">&#128205;</button></div>
+      <div id="w-gr" class="geores hidden"></div></div>
+    <div class="field"><label>Cat&#233;gorie</label><select id="w-cat" class="inp sel-inp"></select></div>
+    <div class="field"><label>Note</label><textarea id="w-note" class="inp ta" rows="2"></textarea></div>
+    <div class="sfooter">
+      <button class="btn btn-g" onclick="UI.closeSheet('sh-addwish')">Annuler</button>
+      <button class="btn btn-p" onclick="WISH.save()">Ajouter &#10022;</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov hidden" id="sh-cat" onclick="UI.ovc(event,this)">
+  <div class="sheet"><div class="handle"></div><h3 class="stitle" id="cat-stitle">&#10022; Categorie</h3>
+    <input type="hidden" id="cat-id"><input type="hidden" id="cat-type">
+    <div class="field"><label>Nom *</label><input type="text" id="cat-name" class="inp"></div>
+    <div class="frow">
+      <div class="field"><label>Ic&#244;ne *</label><input type="text" id="cat-icon" class="inp" maxlength="4"></div>
+      <div class="field"><label>Couleur</label><input type="color" id="cat-color" class="inp" style="padding:4px 6px;height:44px;cursor:pointer" value="#C9A96E"></div>
+    </div>
+    <div class="field" id="cat-anim-f"><label>Animation</label><select id="cat-anim" class="inp sel-inp"><option value="pulse">Pulsation</option><option value="bounce">Rebond</option><option value="glow">Halo</option><option value="none">Aucune</option></select></div>
+    <div class="sfooter">
+      <button class="btn btn-g" onclick="UI.closeSheet('sh-cat')">Annuler</button>
+      <button class="btn btn-p" onclick="CAT.save()">Cr&#233;er &#10022;</button>
+    </div>
+  </div>
+</div>
+
+<div class="content">
+  <div class="ph"><div><h2 class="pt">Notre Histoire</h2><p class="ps">En chiffres</p></div></div>
+  <div style="padding:16px" id="stats-body"></div>
+</div>
+<script src="core.js"></script>
+
+<script>
+function renderStats(){
+  var el=document.getElementById('stats-body');el.innerHTML='';
+  var mems=S.memories,favs=mems.filter(function(m){return m.fav}).length;
+  var cities={};mems.forEach(function(m){var c=cityOf(m.address||'');if(c&&c.length>1&&!/^\d+$/.test(c))cities[c]=(cities[c]||0)+1});
+  var thisMo=new Date().toISOString().slice(0,7);
+  var kpis=[{icon:'💑',val:mems.length,lbl:'Dates ensemble'},{icon:'⭐',val:favs,lbl:'Favoris'},{icon:'🌍',val:Object.keys(cities).length,lbl:'Villes visitees'},{icon:'🗓️',val:mems.filter(function(m){return m.date&&m.date.slice(0,7)===thisMo}).length,lbl:'Ce mois-ci'},{icon:'🗺️',val:S.wishlist.length,lbl:'Wishlist'},{icon:'📖',val:S.journal.length,lbl:'Journal'}];
+  var kg=document.createElement('div');kg.className='kgrid';
+  kpis.forEach(function(k){var c=document.createElement('div');c.className='kcard';c.innerHTML='<div class="kicon">'+k.icon+'</div><div class="kval">'+k.val+'</div><div class="klbl">'+k.lbl+'</div>';kg.appendChild(c)});
+  var sorted=mems.slice().sort(function(a,b){return a.date.localeCompare(b.date)});
+  if(sorted[0]){var fc=document.createElement('div');fc.className='kcard';fc.style.gridColumn='1/-1';fc.innerHTML='<div class="kicon">🥂</div><div class="kval" style="font-size:18px">'+esc(sorted[0].title)+'</div><div class="klbl">Premier souvenir — '+fmtDate(sorted[0].date)+'</div>';kg.appendChild(fc)}
+  el.appendChild(kg);
+  var catC={};mems.forEach(function(m){catC[m.catId]=(catC[m.catId]||0)+1});
+  var dd=S.categories.filter(function(c){return c.type==='souvenir'&&catC[c.id]}).map(function(c){return{name:c.name,icon:c.icon,color:c.color,val:catC[c.id]}});
+  var tot=dd.reduce(function(s,d){return s+d.val},0);
+  if(dd.length){var dw=document.createElement('div');dw.className='dwrap';var cv=document.createElement('canvas');cv.width=160;cv.height=160;dw.appendChild(cv);var dl=document.createElement('div');dl.className='dleg';dd.forEach(function(d){dl.innerHTML+='<div class="dli"><div class="dldot" style="background:'+d.color+'"></div>'+d.icon+' '+esc(d.name)+'<span class="dlval">'+d.val+'</span></div>'});dw.appendChild(dl);el.appendChild(dw);requestAnimationFrame(function(){var ctx=cv.getContext('2d');var ang=-Math.PI/2;dd.forEach(function(d){var sl=(d.val/tot)*Math.PI*2;ctx.beginPath();ctx.moveTo(80,80);ctx.arc(80,80,70,ang,ang+sl);ctx.closePath();ctx.fillStyle=d.color;ctx.fill();ang+=sl});var bg=getComputedStyle(document.body).getPropertyValue('--sur').trim()||'#1A1A2E';ctx.beginPath();ctx.arc(80,80,42,0,Math.PI*2);ctx.fillStyle=bg;ctx.fill();var acc=getComputedStyle(document.body).getPropertyValue('--acc').trim()||'#C9A96E';ctx.fillStyle=acc;ctx.font='bold 22px Cormorant Garant,serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(tot,80,80)})}
+  var tc=Object.entries(cities).sort(function(a,b){return b[1]-a[1]}).slice(0,6);var mx=tc[0]?tc[0][1]:1;
+  if(tc.length){var bs=document.createElement('div');bs.innerHTML='<div class="sshd">Villes les plus visitees</div>';tc.forEach(function(c){bs.innerHTML+='<div class="barrow"><div class="barlbl">'+esc(c[0])+'</div><div class="bartrack"><div class="barfill" style="width:0%;background:var(--acc)" data-w="'+Math.round(c[1]/mx*100)+'%"></div></div><div class="barcnt">'+c[1]+'</div></div>'});el.appendChild(bs);setTimeout(function(){bs.querySelectorAll('.barfill').forEach(function(b){b.style.width=b.dataset.w})},100)}
+  var tl=document.createElement('div');tl.innerHTML='<div class="sshd">Notre timeline</div>';sorted.forEach(function(m,i){var cat=S.categories.find(function(c){return c.id===m.catId});var col=cat?cat.color:'var(--acc)';var d=document.createElement('div');d.className='tlitem';d.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;width:14px"><div class="tldot" style="background:'+col+'"></div>'+(i<sorted.length-1?'<div style="width:1px;flex:1;background:var(--bd);margin-top:4px;min-height:20px"></div>':'')+'</div><div><div class="tltitle">'+( cat?cat.icon+' ':'')+esc(m.title)+'</div><div class="tldate">'+fmtDate(m.date)+(m.address?' · '+esc(m.address):'')+'</div></div>';tl.appendChild(d)});el.appendChild(tl);
+}
+document.addEventListener('DOMContentLoaded',function(){renderStats()});
+</script>
+<script>document.addEventListener('DOMContentLoaded',function(){initCommon();NAV.cur='stats';});</script>
+</body>
+</html>
