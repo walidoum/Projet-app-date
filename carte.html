@@ -209,9 +209,28 @@ var MAP=(function(){
     _map.on('mousedown',function(e){if(!e.originalEvent._fp)_sp(e.latlng)});
     _map.on('mouseup mousemove',_cp);
     _map.on('contextmenu',function(e){L.DomEvent.preventDefault(e);_cp();APP._pos={lat:parseFloat(e.latlng.lat.toFixed(5)),lng:parseFloat(e.latlng.lng.toFixed(5))};UI.openSheet('sh-addmem')});
-    document.getElementById('map').addEventListener('touchstart',function(e){if(e.touches.length!==1)return;var t=e.touches[0];var _ts={x:t.clientX,y:t.clientY};var rect=document.getElementById('map').getBoundingClientRect();var ll=_map.containerPointToLatLng([t.clientX-rect.left,t.clientY-rect.top]);_sp(ll)},{passive:true});
-    document.getElementById('map').addEventListener('touchend',function(){_cp()},{passive:true});
-    document.getElementById('map').addEventListener('touchmove',function(){_cp()},{passive:true});
+    var _touchStart=null;
+    document.getElementById('map').addEventListener('touchstart',function(e){
+      if(e.touches.length!==1)return;
+      var t=e.touches[0];
+      _touchStart={x:t.clientX,y:t.clientY};
+      var rect=document.getElementById('map').getBoundingClientRect();
+      var ll=_map.containerPointToLatLng([t.clientX-rect.left,t.clientY-rect.top]);
+      _sp(ll);
+    },{passive:true});
+    document.getElementById('map').addEventListener('touchend',function(){
+      _touchStart=null;
+      _cp();
+    },{passive:true});
+    document.getElementById('map').addEventListener('touchmove',function(e){
+      // Annuler seulement si le doigt a vraiment bougé (> 8px)
+      if(_touchStart){
+        var t=e.touches[0];
+        var dx=Math.abs(t.clientX-_touchStart.x);
+        var dy=Math.abs(t.clientY-_touchStart.y);
+        if(dx>8||dy>8){_touchStart=null;_cp();}
+      }
+    },{passive:true});
     render();
   }
   function render(){if(!_map)return;Object.keys(_markers).forEach(function(k){try{_markers[k].remove()}catch(e){}});_markers={};var items=_mode==='memories'?S.memories:_mode==='wishlist'?S.wishlist:S.memories.concat(S.wishlist);if(_cats.length)items=items.filter(function(x){return _cats.indexOf(x.catId)>=0});items.forEach(function(item){if(!item.lat||!item.lng)return;var iw=S.wishlist.some(function(w){return w.id===item.id});var cat=S.categories.find(function(c){return c.id===item.catId});var col=cat?cat.color:'#C9A96E',icon=cat?cat.icon:'📍';var h='<div style="width:40px;height:40px;transform:translateY(-50%)"><div style="width:36px;height:36px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,.2);box-shadow:0 4px 14px rgba(0,0,0,.5);cursor:pointer;background:'+col+(iw?';border-style:dashed':'')+';opacity:'+(iw?'.8':'1')+'"><span style="transform:rotate(45deg);font-size:15px;line-height:1">'+icon+'</span></div></div>';var m=L.marker([item.lat,item.lng],{icon:L.divIcon({html:h,className:'',iconSize:[40,40],iconAnchor:[20,40],popupAnchor:[0,-44]})});m.bindPopup('<div style="font-family:Jost,sans-serif;min-width:140px"><b style="color:'+col+';font-family:Cormorant Garant,serif;font-size:15px">'+(item.fav?'⭐ ':'')+esc(item.title)+'</b>'+(item.address?'<small style="display:block;color:var(--tx2);margin-top:3px">'+esc(item.address)+'</small>':'')+(item.date?'<small style="display:block;color:var(--tx2);margin-top:2px">'+fmtDateS(item.date)+'</small>':'')+'</div>',{maxWidth:220});m.on('click',function(e){e.originalEvent._fp=true;if(iw)WISH.detail(item.id)});m.addTo(_map);_markers[item.id]=m})}
