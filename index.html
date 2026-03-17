@@ -197,12 +197,12 @@ body{
 .sres-item:hover{background:var(--sur2);color:var(--tx)}
 /* FAB */
 .fab{display:none}
-.map-bottom-btns{position:absolute;bottom:calc(62px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:400;pointer-events:all}
+.map-bottom-btns{position:absolute;bottom:calc(72px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:400;pointer-events:all}
 .map-action-btn{background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--acc);border-radius:50px;padding:10px 20px;font-size:13px;color:var(--acc);cursor:pointer;transition:all .2s;box-shadow:0 4px 20px var(--glow);font-family:'Jost',sans-serif;font-weight:500;white-space:nowrap}
 .map-action-btn:hover,.map-action-btn:active{background:var(--acc);color:var(--bg)}
 .map-action-wish{border-color:var(--acc2);color:var(--acc2)}
 .map-action-wish:hover,.map-action-wish:active{background:var(--acc2);color:var(--bg)}
-.map-locate-btn{position:absolute;bottom:calc(62px + env(safe-area-inset-bottom,0px));right:16px;z-index:400;width:46px;height:46px;border-radius:50%;background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--bd);color:var(--tx2);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:var(--shsm);transition:all .2s}
+.map-locate-btn{position:absolute;bottom:calc(72px + env(safe-area-inset-bottom,0px));right:16px;z-index:400;width:46px;height:46px;border-radius:50%;background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--bd);color:var(--tx2);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:var(--shsm);transition:all .2s}
 .map-locate-btn:hover,.map-locate-btn:active{border-color:var(--acc);color:var(--acc);background:var(--sur)}
 .map-locate-btn.locating{border-color:var(--acc);color:var(--acc);animation:locatePulse 1s ease-in-out infinite}
 .map-locate-btn.located{border-color:var(--ok);color:var(--ok)}
@@ -1047,12 +1047,17 @@ function fmtAddrFromDisplay(dn){
   for(var i=1;i<parts.length-1;i++){
     var cp=parts[i].match(/^\d{5}\s+(.+)$/);
     if(cp){city=cp[1];break;}
-    if(!/\d/.test(parts[i])&&!/^(île|région|départ|arrond|district|grand)/i.test(parts[i])&&parts[i].length>2&&!city)city=parts[i];
+    if(!/\d/.test(parts[i])&&!/^(île|région|départ|arrond|grand|hauts|seine|val-|val )/i.test(parts[i])&&parts[i].length>2&&!city)city=parts[i];
   }
   return [street,city,country].filter(Boolean).join(', ');
 }
 function extractCity(addr){
   var p=addr.split(',').map(function(s){return s.trim();});
+  for(var i=0;i<p.length;i++){
+    var cp=p[i].match(/^\d{5}\s+(.+)$/);
+    if(cp)return cp[1];
+    if(i>0&&!/\d/.test(p[i])&&!/^(rue|boulevard|avenue|allée|impasse|place|chemin|voie|square|île|région|france|paris gare)/i.test(p[i])&&p[i].length>2)return p[i];
+  }
   return p.length>=2?p[p.length-2]:p[0]||'';
 }
 // ══════════════════════════════════════════════════
@@ -1703,16 +1708,23 @@ var MAP=(function(){
     else if(_mode==='wishlist')baseItems=S.wishlist;
     else baseItems=S.memories.concat(S.wishlist);
     var items=_activeCats.length?baseItems.filter(function(item){return _activeCats.indexOf(item.catId)>=0}):baseItems;
-    // Clustering : grouper les items proches (~500m)
-    var CLUSTER_R=0.005;
+    // Clustering zoom-aware
+    var zoom=_map.getZoom();
+    var CLUSTER_R=zoom<10?0.08:zoom<13?0.02:zoom<15?0.006:0;
     var clusters=[];
     items.forEach(function(item){
       if(!item.lat||!item.lng)return;
+      if(CLUSTER_R===0){clusters.push({lat:item.lat,lng:item.lng,items:[item]});return;}
       var found=false;
       for(var ci=0;ci<clusters.length;ci++){
         var c=clusters[ci];
         var d=Math.sqrt(Math.pow(item.lat-c.lat,2)+Math.pow(item.lng-c.lng,2));
-        if(d<CLUSTER_R){c.items.push(item);found=true;break;}
+        if(d<CLUSTER_R){
+          var n=c.items.length;
+          c.lat=(c.lat*n+item.lat)/(n+1);
+          c.lng=(c.lng*n+item.lng)/(n+1);
+          c.items.push(item);found=true;break;
+        }
       }
       if(!found)clusters.push({lat:item.lat,lng:item.lng,items:[item]});
     });
@@ -1726,40 +1738,49 @@ var MAP=(function(){
       var pinClass='cpin'+(isWish?' cpin-wish':'')+(anim?' anim-'+anim:'');
       var html;
       if(count>1){
-        html='<div style="width:48px;height:48px;transform:translateY(-50%);position:relative">'
-          +'<div class="'+pinClass+'" style="background:'+color+';width:40px;height:40px">'
-          +'<span class="cpinicon">'+icon+'</span></div>'
-          +'<div style="position:absolute;top:-4px;right:-4px;background:#fff;color:'+color
-          +';border:2px solid '+color+';border-radius:50%;width:20px;height:20px;font-size:11px;'
-          +'font-weight:700;display:flex;align-items:center;justify-content:center;font-family:Jost,sans-serif">'
+        var shown=Math.min(count,3);
+        var angles=[-20,0,20];
+        var txs=[[-5,2],[0,-2],[5,2]];
+        var pins='';
+        for(var pi=0;pi<shown;pi++){
+          var ci2=cluster.items[pi];
+          var cc=S.categories.find(function(c){return c.id===ci2.catId;});
+          var ccol=cc?cc.color:color;
+          var cico=cc?cc.icon:icon;
+          pins+='<div class="cpin" style="position:absolute;left:50%;top:50%;'
+            +'width:32px;height:32px;margin-left:-16px;margin-top:-16px;'
+            +'background:'+ccol+';transform:rotate('+angles[pi]+'deg) translate('+txs[pi][0]+'px,'+txs[pi][1]+'px);'
+            +'transform-origin:50% 100%;box-shadow:0 3px 10px rgba(0,0,0,0.5);'
+            +'transition:all 0.3s ease">'
+            +'<span class="cpinicon" style="font-size:15px">'+cico+'</span></div>';
+        }
+        html='<div style="width:64px;height:64px;transform:translateY(-50%);position:relative;cursor:pointer">'
+          +pins
+          +'<div style="position:absolute;top:-6px;right:-6px;'
+          +'background:#fff;color:'+color+';border:2.5px solid '+color+';'
+          +'border-radius:50%;min-width:22px;height:22px;padding:0 4px;font-size:12px;'
+          +'font-weight:800;display:flex;align-items:center;justify-content:center;'
+          +'font-family:Jost,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,0.4);z-index:10">'
           +count+'</div></div>';
       } else {
         html='<div style="width:40px;height:40px;transform:translateY(-50%)">'
           +'<div class="'+pinClass+'" style="background:'+color+(isWish?';border-style:dashed':'')+'">'
           +'<span class="cpinicon">'+icon+'</span></div></div>';
       }
-      var sz=count>1?[48,48]:[40,40];
-      var anchor=count>1?[24,48]:[20,40];
-      var leafIcon=L.divIcon({html:html,className:'',iconSize:sz,iconAnchor:anchor,popupAnchor:[0,-44]});
-      var m=L.marker([item.lat,item.lng],{icon:leafIcon,zIndexOffset:count>1?100:0});
+      var sz=count>1?[64,64]:[40,40];
+      var anchor=count>1?[32,64]:[20,40];
+      var leafIcon=L.divIcon({html:html,className:'',iconSize:sz,iconAnchor:anchor,popupAnchor:[0,-50]});
+      var m=L.marker([cluster.lat,cluster.lng],{icon:leafIcon,zIndexOffset:count>1?200:0});
       var fav=item.fav?'⭐ ':'';
       var dateStr=item.date?(' <small style="color:var(--tx2);display:block;margin-top:2px">'+fmtDateShort(item.date)+'</small>'):'';
-      var popupTitle=count>1?count+' souvenirs ici':fav+esc(item.title);
-      m.bindPopup(
-        '<div style="font-family:Jost,sans-serif;min-width:140px">'+
-        '<b style="color:'+color+';font-family:Cormorant Garant,serif;font-size:15px">'+popupTitle+'</b>'+
-        (item.address?'<small style="display:block;color:var(--tx2);margin-top:3px">📍 '+esc(item.address)+'</small>':'')+
-        dateStr+'</div>',{maxWidth:220,className:''}
-      );
+      var popup=count>1
+        ?'<b style="color:'+color+';font-family:Cormorant Garant,serif;font-size:15px">'+count+' souvenirs ici</b><small style="display:block;color:var(--tx2);margin-top:4px">Zoome pour les séparer</small>'
+        :'<b style="color:'+color+';font-family:Cormorant Garant,serif;font-size:15px">'+fav+esc(item.title)+'</b>'+(item.address?'<small style="display:block;color:var(--tx2);margin-top:3px">📍 '+esc(item.address)+'</small>':'')+dateStr;
+      m.bindPopup('<div style="font-family:Jost,sans-serif;min-width:140px">'+popup+'</div>',{maxWidth:220});
       m.on('click',function(e){
         e.originalEvent._fromPin=true;
-        if(count>1){
-          // Zoom sur le cluster
-          _map.setView([item.lat,item.lng],Math.min(_map.getZoom()+2,17),{animate:true,duration:0.5});
-        } else {
-          if(isWish)WISH.openDetail(item.id);
-          else MEM.openDetail(item.id);
-        }
+        if(count>1){_map.flyTo([cluster.lat,cluster.lng],Math.min(zoom+3,17),{animate:true,duration:0.5});}
+        else{if(isWish)WISH.openDetail(item.id);else MEM.openDetail(item.id);}
       });
       m.addTo(_map);
       _markers[item.id]=m;
@@ -2404,7 +2425,6 @@ var STATS={
     mems.forEach(function(m){if(m.fav)favs++});
     var cities={};mems.forEach(function(m){
       var city=extractCity(m.address||'');
-      // Nettoyer les résidus de chiffres seuls
       city=city.replace(/^\d+\s*/,'').trim();
       if(city&&city.length>1&&!/^\d+$/.test(city))cities[city]=(cities[city]||0)+1;
     });
