@@ -13,7 +13,6 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <title>Winnie & Vvs ✦</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2285%22>👩🏻‍❤️‍💋‍👨🏽</text></svg>">
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garant:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -198,12 +197,12 @@ body{
 .sres-item:hover{background:var(--sur2);color:var(--tx)}
 /* FAB */
 .fab{display:none}
-.map-bottom-btns{position:absolute;bottom:calc(68px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:400;pointer-events:all}
+.map-bottom-btns{position:absolute;bottom:calc(62px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:400;pointer-events:all}
 .map-action-btn{background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--acc);border-radius:50px;padding:10px 20px;font-size:13px;color:var(--acc);cursor:pointer;transition:all .2s;box-shadow:0 4px 20px var(--glow);font-family:'Jost',sans-serif;font-weight:500;white-space:nowrap}
 .map-action-btn:hover,.map-action-btn:active{background:var(--acc);color:var(--bg)}
 .map-action-wish{border-color:var(--acc2);color:var(--acc2)}
 .map-action-wish:hover,.map-action-wish:active{background:var(--acc2);color:var(--bg)}
-.map-locate-btn{position:absolute;bottom:calc(68px + env(safe-area-inset-bottom,0px));right:16px;z-index:400;width:46px;height:46px;border-radius:50%;background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--bd);color:var(--tx2);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:var(--shsm);transition:all .2s}
+.map-locate-btn{position:absolute;bottom:calc(62px + env(safe-area-inset-bottom,0px));right:16px;z-index:400;width:46px;height:46px;border-radius:50%;background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--bd);color:var(--tx2);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:var(--shsm);transition:all .2s}
 .map-locate-btn:hover,.map-locate-btn:active{border-color:var(--acc);color:var(--acc);background:var(--sur)}
 .map-locate-btn.locating{border-color:var(--acc);color:var(--acc);animation:locatePulse 1s ease-in-out infinite}
 .map-locate-btn.located{border-color:var(--ok);color:var(--ok)}
@@ -1029,6 +1028,33 @@ var DB = {
   }
 };
 
+
+// ── UTILITAIRE ADRESSE ──
+function fmtAddr(data){
+  var a=data.address||{};
+  var road=a.road||a.pedestrian||a.footway||a.path||'';
+  var num=a.house_number?a.house_number+' ':'';
+  var street=(num+road).trim();
+  var city=a.city||a.town||a.village||a.county||'';
+  var country=a.country||'';
+  return [street,city,country].filter(Boolean).join(', ');
+}
+function fmtAddrFromDisplay(dn){
+  var parts=dn.split(',').map(function(s){return s.trim();});
+  var street=parts[0]||'';
+  var city='';
+  var country=parts[parts.length-1]||'';
+  for(var i=1;i<parts.length-1;i++){
+    var cp=parts[i].match(/^\d{5}\s+(.+)$/);
+    if(cp){city=cp[1];break;}
+    if(!/\d/.test(parts[i])&&!/^(île|région|départ|arrond|district|grand)/i.test(parts[i])&&parts[i].length>2&&!city)city=parts[i];
+  }
+  return [street,city,country].filter(Boolean).join(', ');
+}
+function extractCity(addr){
+  var p=addr.split(',').map(function(s){return s.trim();});
+  return p.length>=2?p[p.length-2]:p[0]||'';
+}
 // ══════════════════════════════════════════════════
 // PROFIL UTILISATEUR
 // ══════════════════════════════════════════════════
@@ -1602,14 +1628,8 @@ var MAP=(function(){
           .then(function(r){return r.json()})
           .then(function(data){
             if(!data||!data.address)return;
-            var a=data.address;
-            var road=a.road||a.pedestrian||a.footway||'';
-            var num=a.house_number?a.house_number+' ':'';
-            var postcode=a.postcode||'';
-            var city=a.city||a.town||a.village||a.county||'';
-            var addrStr=(num+road).trim();
-            var fullAddr=addrStr+(postcode||city?', '+(postcode?postcode+' ':'')+city:'');
-            if(!fullAddr)fullAddr=data.display_name.split(',').slice(0,3).join(',');
+            var fullAddr=fmtAddr(data);
+            if(!fullAddr)fullAddr=fmtAddrFromDisplay(data.display_name);
             var b1=document.getElementById('addmem-posbadge');
             if(b1){b1.textContent='📍 '+fullAddr;b1.classList.remove('hidden');}
             var b2=document.getElementById('addwish-posbadge');
@@ -1683,30 +1703,63 @@ var MAP=(function(){
     else if(_mode==='wishlist')baseItems=S.wishlist;
     else baseItems=S.memories.concat(S.wishlist);
     var items=_activeCats.length?baseItems.filter(function(item){return _activeCats.indexOf(item.catId)>=0}):baseItems;
+    // Clustering : grouper les items proches (~500m)
+    var CLUSTER_R=0.005;
+    var clusters=[];
     items.forEach(function(item){
       if(!item.lat||!item.lng)return;
+      var found=false;
+      for(var ci=0;ci<clusters.length;ci++){
+        var c=clusters[ci];
+        var d=Math.sqrt(Math.pow(item.lat-c.lat,2)+Math.pow(item.lng-c.lng,2));
+        if(d<CLUSTER_R){c.items.push(item);found=true;break;}
+      }
+      if(!found)clusters.push({lat:item.lat,lng:item.lng,items:[item]});
+    });
+    clusters.forEach(function(cluster){
+      var item=cluster.items[0];
+      var count=cluster.items.length;
       var isWish=S.wishlist.some(function(w){return w.id===item.id});
       var cat=S.categories.find(function(c){return c.id===item.catId});
       var color=cat?cat.color:'#C9A96E',icon=cat?cat.icon:'📍';
       var anim=(!isWish&&cat&&cat.anim&&cat.anim!=='none')?cat.anim:'';
       var pinClass='cpin'+(isWish?' cpin-wish':'')+(anim?' anim-'+anim:'');
-      var html='<div style="width:40px;height:40px;transform:translateY(-50%)">'+
-        '<div class="'+pinClass+'" style="background:'+color+(isWish?';border-style:dashed':'')+'">'+
-        '<span class="cpinicon">'+icon+'</span></div></div>';
-      var leafIcon=L.divIcon({html:html,className:'',iconSize:[40,40],iconAnchor:[20,40],popupAnchor:[0,-44]});
-      var m=L.marker([item.lat,item.lng],{icon:leafIcon});
+      var html;
+      if(count>1){
+        html='<div style="width:48px;height:48px;transform:translateY(-50%);position:relative">'
+          +'<div class="'+pinClass+'" style="background:'+color+';width:40px;height:40px">'
+          +'<span class="cpinicon">'+icon+'</span></div>'
+          +'<div style="position:absolute;top:-4px;right:-4px;background:#fff;color:'+color
+          +';border:2px solid '+color+';border-radius:50%;width:20px;height:20px;font-size:11px;'
+          +'font-weight:700;display:flex;align-items:center;justify-content:center;font-family:Jost,sans-serif">'
+          +count+'</div></div>';
+      } else {
+        html='<div style="width:40px;height:40px;transform:translateY(-50%)">'
+          +'<div class="'+pinClass+'" style="background:'+color+(isWish?';border-style:dashed':'')+'">'
+          +'<span class="cpinicon">'+icon+'</span></div></div>';
+      }
+      var sz=count>1?[48,48]:[40,40];
+      var anchor=count>1?[24,48]:[20,40];
+      var leafIcon=L.divIcon({html:html,className:'',iconSize:sz,iconAnchor:anchor,popupAnchor:[0,-44]});
+      var m=L.marker([item.lat,item.lng],{icon:leafIcon,zIndexOffset:count>1?100:0});
       var fav=item.fav?'⭐ ':'';
       var dateStr=item.date?(' <small style="color:var(--tx2);display:block;margin-top:2px">'+fmtDateShort(item.date)+'</small>'):'';
+      var popupTitle=count>1?count+' souvenirs ici':fav+esc(item.title);
       m.bindPopup(
         '<div style="font-family:Jost,sans-serif;min-width:140px">'+
-        '<b style="color:'+color+';font-family:Cormorant Garant,serif;font-size:15px">'+fav+esc(item.title)+'</b>'+
+        '<b style="color:'+color+';font-family:Cormorant Garant,serif;font-size:15px">'+popupTitle+'</b>'+
         (item.address?'<small style="display:block;color:var(--tx2);margin-top:3px">📍 '+esc(item.address)+'</small>':'')+
         dateStr+'</div>',{maxWidth:220,className:''}
       );
       m.on('click',function(e){
         e.originalEvent._fromPin=true;
-        if(isWish)WISH.openDetail(item.id);
-        else MEM.openDetail(item.id);
+        if(count>1){
+          // Zoom sur le cluster
+          _map.setView([item.lat,item.lng],Math.min(_map.getZoom()+2,17),{animate:true,duration:0.5});
+        } else {
+          if(isWish)WISH.openDetail(item.id);
+          else MEM.openDetail(item.id);
+        }
       });
       m.addTo(_map);
       _markers[item.id]=m;
@@ -1785,15 +1838,10 @@ var GEOCODE=(function(){
     }
     results.slice(0,6).forEach(function(r){
       var d=document.createElement('div');d.className='georow';
-      var dp=r.display_name.split(',').map(function(s){return s.trim()});
+      var formatted=fmtAddrFromDisplay(r.display_name);
+      var dp=formatted.split(',').map(function(s){return s.trim();});
       var mainName=dp[0];
-      var postcode='',city='',country='';
-      for(var pi=0;pi<dp.length;pi++){
-        if(/^\d{4,5}$/.test(dp[pi]))postcode=dp[pi];
-        else if(pi===dp.length-1)country=dp[pi];
-        else if(pi>=1&&pi<=3&&!city)city=dp[pi];
-      }
-      var detail=[postcode,city,country].filter(Boolean).join(', ');
+      var detail=dp.slice(1).filter(Boolean).join(', ');
       d.innerHTML='<div style="display:flex;align-items:center;gap:10px;padding:2px 0">'+
         '<div style="width:28px;height:28px;border-radius:50%;background:var(--acc);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px">📍</div>'+
         '<div style="flex:1;min-width:0">'+
@@ -1801,14 +1849,7 @@ var GEOCODE=(function(){
           '<div style="color:var(--tx2);font-size:11px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(detail)+'</div>'+
         '</div></div>';
       d.onclick=function(){
-        var parts=r.display_name.split(',').map(function(s){return s.trim()});
-        var sNum=parts[0]||'';
-        var sPostcode='',sCity='';
-        for(var si=0;si<parts.length;si++){
-          if(/^\d{5}$/.test(parts[si]))sPostcode=parts[si];
-          else if(si===1||si===2)sCity=sCity||parts[si];
-        }
-        var shortName=sNum+(sPostcode||sCity?', '+(sPostcode?sPostcode+' ':'')+sCity:'');
+        var shortName=fmtAddrFromDisplay(r.display_name);
         document.getElementById(inputId).value=shortName;
         el.classList.add('hidden');
         var lat=parseFloat(r.lat),lng=parseFloat(r.lon);
@@ -2362,26 +2403,10 @@ var STATS={
     var mems=S.memories,favs=0;
     mems.forEach(function(m){if(m.fav)favs++});
     var cities={};mems.forEach(function(m){
-      var addr=m.address||'';
-      var parts=addr.split(',');
-      var city='';
-      for(var pi=0;pi<parts.length;pi++){
-        var p=parts[pi].trim();
-        var cpMatch=p.match(/^(\d{5})\s+(.+)$/);
-        if(cpMatch){
-          var afterCP=cpMatch[2].trim();
-          var rueMots=/^(rue|boulevard|avenue|all.e|impasse|place|passage|chemin|voie|square)/i;
-          if(!rueMots.test(afterCP)){city=afterCP.split(' ')[0];break;}
-        }
-      }
-      if(!city){
-        for(var pi=parts.length-1;pi>=0;pi--){
-          var p=parts[pi].trim().replace(/^\d{4,6}\s*/,'').trim();
-          if(p&&p.length>2&&!/^\d+$/.test(p)){city=p;break;}
-        }
-      }
-      if(!city&&parts.length)city=parts[0].trim();
-      if(city)cities[city]=(cities[city]||0)+1;
+      var city=extractCity(m.address||'');
+      // Nettoyer les résidus de chiffres seuls
+      city=city.replace(/^\d+\s*/,'').trim();
+      if(city&&city.length>1&&!/^\d+$/.test(city))cities[city]=(cities[city]||0)+1;
     });
     var nCities=Object.keys(cities).length;
     var thisM=new Date().toISOString().slice(0,7);
