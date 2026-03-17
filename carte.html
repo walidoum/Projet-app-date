@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garant:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="style.css?v=1773766705">
+<link rel="stylesheet" href="style.css?v=1773767432">
 <style>
 #map-container{position:fixed;top:0;left:0;right:0;bottom:calc(58px + env(safe-area-inset-bottom,0px));z-index:1;}
 #map{width:100%;height:100%;background:#08080e}
@@ -145,7 +145,7 @@
 <div id="map-container"><div id="map"></div></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<script src="core.js?v=1773766705"></script>
+<script src="core.js?v=1773767432"></script>
 <script>
 var APP={_pos:null,_cw:null,_epos:null};
 
@@ -214,6 +214,107 @@ var WISH={
   }
 };
 
+
+// ── Détail souvenir depuis la carte ──────────────────────────────────────────
+var MAP_DETAIL={
+  open:function(id){
+    var m=S.memories.find(function(x){return x.id===id;});if(!m)return;
+    var cat=S.categories.find(function(c){return c.id===m.catId;});
+    var old=document.getElementById('fs-map-detail');if(old)old.remove();
+    var col=cat?cat.color:'var(--acc)';
+    var fs=document.createElement('div');fs.id='fs-map-detail';fs.className='fs';
+
+    // Hero
+    var hero=document.createElement('div');hero.className='fs-hero';
+    var tb=document.createElement('div');tb.className='fs-topbar';
+    var back=document.createElement('button');back.className='fs-back';back.textContent='←';
+    back.onclick=function(){MAP_DETAIL.close();};
+    var fav=document.createElement('button');fav.className='fs-fav';
+    fav.textContent=m.fav?'⭐ Favori':'Favori';
+    fav.onclick=function(){m.fav=!m.fav;STG.save();fav.textContent=m.fav?'⭐ Favori':'Favori';MAP.render();};
+    tb.appendChild(back);tb.appendChild(fav);hero.appendChild(tb);
+    var pat=document.createElement('div');pat.className='fs-hero-pat';
+    pat.style.background=col+'18';pat.textContent=cat?cat.icon:'📍';
+    hero.appendChild(pat);
+    var grad=document.createElement('div');grad.className='fs-hero-grad';hero.appendChild(grad);
+    fs.appendChild(hero);
+
+    // Content
+    var sc=document.createElement('div');sc.className='fs-scroll';
+    var title=document.createElement('h1');title.className='fs-title';title.textContent=m.title;sc.appendChild(title);
+    var chips=document.createElement('div');chips.className='fs-chips';
+    [{l:fmtDate(m.date)},
+     cat?{l:cat.icon+' '+cat.name,s:'background:'+col+'22;color:'+col+';border-color:'+col+'44'}:null,
+     m.address?{l:m.address}:null
+    ].filter(Boolean).forEach(function(ch){
+      var sp=document.createElement('span');sp.className='chip';sp.textContent=ch.l;
+      if(ch.s)sp.setAttribute('style',ch.s);chips.appendChild(sp);
+    });
+    sc.appendChild(chips);
+    if(m.note){var note=document.createElement('div');note.className='fs-note';note.textContent=m.note;sc.appendChild(note);}
+    var acts=document.createElement('div');acts.className='fs-acts';
+    var lb=document.createElement('button');lb.className='btn btn-g';lb.textContent='Voir dans la liste';
+    lb.onclick=function(){window.location.replace('liste.html');};
+    acts.appendChild(lb);
+    sc.appendChild(acts);fs.appendChild(sc);
+    document.body.appendChild(fs);
+
+    // Charger médias
+    if(m.photoRefs&&m.photoRefs.length){
+      IDB.forMem(id,function(meds){
+        var imgs=meds.filter(function(x){return x.type&&x.type.startsWith('image/');});
+        var vids=meds.filter(function(x){return x.type&&x.type.startsWith('video/');});
+        var heroEl=null,currentVid=null;
+        function showI(src){
+          if(currentVid){currentVid.pause();currentVid.style.display='none';}
+          if(!heroEl||heroEl.tagName!=='IMG'){
+            if(heroEl)heroEl.remove();
+            heroEl=document.createElement('img');
+            heroEl.style.cssText='width:100%;height:100%;object-fit:cover;position:absolute;inset:0';
+            pat.style.display='none';hero.insertBefore(heroEl,grad);
+          }
+          heroEl.style.display='block';heroEl.src=src;
+        }
+        function showV(data){
+          if(!currentVid){
+            currentVid=document.createElement('video');
+            currentVid.style.cssText='width:100%;height:100%;object-fit:cover;position:absolute;inset:0';
+            currentVid.muted=true;currentVid.loop=true;
+            currentVid.setAttribute('playsinline','');currentVid.setAttribute('webkit-playsinline','');
+            pat.style.display='none';hero.insertBefore(currentVid,grad);
+            fs._stopVid=function(){try{currentVid.pause();currentVid.src='';}catch(e){}};
+          }
+          if(heroEl)heroEl.style.display='none';
+          currentVid.style.display='block';currentVid.src=URL.createObjectURL(data);currentVid.play().catch(function(){});
+        }
+        var all=[];
+        imgs.forEach(function(x){all.push({type:'img',data:x.data});});
+        vids.forEach(function(x){all.push({type:'vid',data:x.data});});
+        if(all.length>0){
+          if(all[0].type==='img')showI(URL.createObjectURL(all[0].data));else showV(all[0].data);
+          if(all.length>1){
+            var strip=document.createElement('div');strip.className='fs-strip';
+            sc.insertBefore(strip,title.nextSibling);
+            all.forEach(function(med,i){
+              var th=document.createElement('div');
+              th.style.cssText='flex-shrink:0;width:90px;height:90px;border-radius:12px;overflow:hidden;cursor:pointer;border:2px solid '+(i===0?'var(--acc)':'transparent')+';background:#111;position:relative;';
+              if(med.type==='img'){var ti=document.createElement('img');ti.src=URL.createObjectURL(med.data);ti.style.cssText='width:100%;height:100%;object-fit:cover;';th.appendChild(ti);}
+              else{th.innerHTML='<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:26px;">▶️</div>';}
+              th.onclick=(function(m2){return function(){strip.querySelectorAll('div').forEach(function(t){t.style.borderColor='transparent';});th.style.borderColor='var(--acc)';if(m2.type==='img')showI(URL.createObjectURL(m2.data));else showV(m2.data);};})(med);
+              strip.appendChild(th);
+            });
+          }
+        }
+      });
+    }
+  },
+  close:function(){
+    var fs=document.getElementById('fs-map-detail');if(!fs)return;
+    if(fs._stopVid)fs._stopVid();
+    fs.classList.add('out');setTimeout(function(){if(fs.parentNode)fs.parentNode.removeChild(fs);},320);
+  }
+};
+
 var MAP=(function(){
   var _map=null,_layer=null,_markers={},_mode='memories',_cats=[];
   var TDK='https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
@@ -226,46 +327,75 @@ var MAP=(function(){
     _layer=L.tileLayer(S.config.theme==='clair'?TLT:TDK,{subdomains:'abcd',maxZoom:19}).addTo(_map);
 
     // Long press pour ajouter un souvenir
-    var _pt=null,_pl=null,_touchStart=null;
-    function _sp(ll){
-      _pl=ll;_pt=setTimeout(function(){
-        if(!_pl)return;
-        var lat=parseFloat(_pl.lat.toFixed(6)),lng=parseFloat(_pl.lng.toFixed(6));
-        APP._pos={lat:lat,lng:lng};
-        if(navigator.vibrate)navigator.vibrate(50);
-        UI.openSheet('sh-addmem');
-        // Remplir adresse avec délai pour laisser _prefill() terminer
-        setTimeout(function(){
-          fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat='+lat+'&lon='+lng+'&accept-language=fr')
-            .then(function(r){return r.json();})
-            .then(function(d){
-              if(!d||!d.address)return;
-              var addr=fmtAddr(d.address)||shortAddr(d.display_name);
-              var b=document.getElementById('am-badge');
-              if(b){b.textContent=addr;b.classList.remove('hidden');}
-              var ai=document.getElementById('a-addr');if(ai)ai.value=addr;
-              var ti=document.getElementById('a-title');
-              if(ti&&!ti.value.trim()&&d.address)
-                ti.value=(d.address.road||d.address.amenity||addr.split(',')[0]).trim();
-            }).catch(function(){});
-        }, 150);
+    var _pt=null,_ll=null,_ts=null,_fired=false;
+
+    function _openWithPos(lat,lng){
+      APP._pos={lat:lat,lng:lng};
+      if(navigator.vibrate)navigator.vibrate(50);
+      UI.openSheet('sh-addmem');
+      // Fetch Nominatim après que _prefill() a fini (~200ms)
+      setTimeout(function(){
+        fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat='+lat+'&lon='+lng+'&accept-language=fr')
+          .then(function(r){return r.json();})
+          .then(function(d){
+            if(!d||!d.address)return;
+            var addr=fmtAddr(d.address)||shortAddr(d.display_name);
+            var b=document.getElementById('am-badge');
+            if(b){b.textContent=addr;b.classList.remove('hidden');}
+            var ai=document.getElementById('a-addr');if(ai)ai.value=addr;
+            var ti=document.getElementById('a-title');
+            if(ti&&!ti.value.trim()&&d.address)
+              ti.value=(d.address.road||d.address.amenity||addr.split(',')[0]).trim();
+          }).catch(function(){});
+      },200);
+    }
+
+    function _startLP(clientX,clientY){
+      _fired=false;
+      var rect=document.getElementById('map').getBoundingClientRect();
+      _ll=_map.containerPointToLatLng([clientX-rect.left,clientY-rect.top]);
+      _ts={x:clientX,y:clientY};
+      clearTimeout(_pt);
+      _pt=setTimeout(function(){
+        if(!_ll)return;
+        _fired=true;
+        var lat=parseFloat(_ll.lat.toFixed(6)),lng=parseFloat(_ll.lng.toFixed(6));
+        _openWithPos(lat,lng);
+        _ll=null;
       },600);
     }
-    function _cp(){clearTimeout(_pt);_pt=null;_pl=null;_touchStart=null;}
 
-    _map.on('contextmenu',function(e){L.DomEvent.preventDefault(e);_cp();APP._pos={lat:parseFloat(e.latlng.lat.toFixed(5)),lng:parseFloat(e.latlng.lng.toFixed(5))};UI.openSheet('sh-addmem');});
+    function _cancelLP(dx,dy){
+      // Annuler si mouvement > 10px, ou si pas de coordonnées
+      if(dx===undefined||dy===undefined||dx>10||dy>10){
+        clearTimeout(_pt);_ll=null;
+      }
+    }
 
+    // Leaflet mousedown (desktop)
+    _map.on('contextmenu',function(e){
+      L.DomEvent.preventDefault(e);
+      if(!_fired){
+        var lat=parseFloat(e.latlng.lat.toFixed(5)),lng=parseFloat(e.latlng.lng.toFixed(5));
+        _openWithPos(lat,lng);
+      }
+    });
+
+    // Touch events sur le container
     var mapEl=document.getElementById('map');
     mapEl.addEventListener('touchstart',function(e){
       if(e.touches.length!==1)return;
-      var t=e.touches[0];_touchStart={x:t.clientX,y:t.clientY};
-      var rect=mapEl.getBoundingClientRect();
-      var ll=_map.containerPointToLatLng([t.clientX-rect.left,t.clientY-rect.top]);
-      _sp(ll);
+      _startLP(e.touches[0].clientX,e.touches[0].clientY);
     },{passive:true});
-    mapEl.addEventListener('touchend',function(){_cp();},{passive:true});
+    mapEl.addEventListener('touchend',function(e){
+      // Ne pas annuler si déjà fired (le timer a déjà ouvert le formulaire)
+      if(!_fired)_cancelLP(999,999);
+    },{passive:true});
     mapEl.addEventListener('touchmove',function(e){
-      if(_touchStart){var t=e.touches[0];if(Math.abs(t.clientX-_touchStart.x)>8||Math.abs(t.clientY-_touchStart.y)>8)_cp();}
+      if(!_ts||!e.touches[0])return;
+      var dx=Math.abs(e.touches[0].clientX-_ts.x);
+      var dy=Math.abs(e.touches[0].clientY-_ts.y);
+      if(dx>10||dy>10)_cancelLP(dx,dy);
     },{passive:true});
 
     render();
@@ -285,7 +415,15 @@ var MAP=(function(){
       var h='<div style="width:40px;height:40px;transform:translateY(-50%)"><div style="width:36px;height:36px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,.2);box-shadow:0 4px 14px rgba(0,0,0,.5);cursor:pointer;background:'+col+(iw?';border-style:dashed':'')+';opacity:'+(iw?'.8':'1')+'"><span style="transform:rotate(45deg);font-size:15px;line-height:1">'+icon+'</span></div></div>';
       var m=L.marker([item.lat,item.lng],{icon:L.divIcon({html:h,className:'',iconSize:[40,40],iconAnchor:[20,40],popupAnchor:[0,-44]})});
       m.bindPopup('<div style="font-family:Jost,sans-serif;min-width:140px"><b style="color:'+col+';font-family:Cormorant Garant,serif;font-size:15px">'+(item.fav?'⭐ ':'')+esc(item.title)+'</b>'+(item.address?'<small style="display:block;color:var(--tx2);margin-top:3px">'+esc(item.address)+'</small>':'')+(item.date?'<small style="display:block;color:var(--tx2);margin-top:2px">'+fmtDateS(item.date)+'</small>':'')+'</div>',{maxWidth:220});
-      m.on('click',function(e){e.originalEvent._fp=true;if(iw)WISH.detail(item.id);});
+      m.on('click',function(e){
+        e.originalEvent._fp=true;
+        if(iw){
+          WISH.detail(item.id);
+        } else {
+          // Ouvrir le détail du souvenir inline
+          MAP_DETAIL.open(item.id);
+        }
+      });
       m.addTo(_map);_markers[item.id]=m;
     });
   }
