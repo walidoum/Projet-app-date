@@ -197,12 +197,12 @@ body{
 .sres-item:hover{background:var(--sur2);color:var(--tx)}
 /* FAB */
 .fab{display:none}
-.map-bottom-btns{position:absolute;bottom:max(16px,calc(var(--sab) + 8px));left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:400;pointer-events:all}
+.map-bottom-btns{position:absolute;bottom:calc(72px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:400;pointer-events:all}
 .map-action-btn{background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--acc);border-radius:50px;padding:10px 20px;font-size:13px;color:var(--acc);cursor:pointer;transition:all .2s;box-shadow:0 4px 20px var(--glow);font-family:'Jost',sans-serif;font-weight:500;white-space:nowrap}
 .map-action-btn:hover,.map-action-btn:active{background:var(--acc);color:var(--bg)}
 .map-action-wish{border-color:var(--acc2);color:var(--acc2)}
 .map-action-wish:hover,.map-action-wish:active{background:var(--acc2);color:var(--bg)}
-.map-locate-btn{position:absolute;bottom:calc(16px + env(safe-area-inset-bottom,0px));right:16px;z-index:400;width:46px;height:46px;border-radius:50%;background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--bd);color:var(--tx2);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:var(--shsm);transition:all .2s}
+.map-locate-btn{position:absolute;bottom:calc(72px + env(safe-area-inset-bottom,0px));right:16px;z-index:400;width:46px;height:46px;border-radius:50%;background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--bd);color:var(--tx2);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:var(--shsm);transition:all .2s}
 .map-locate-btn:hover,.map-locate-btn:active{border-color:var(--acc);color:var(--acc);background:var(--sur)}
 .map-locate-btn.locating{border-color:var(--acc);color:var(--acc);animation:locatePulse 1s ease-in-out infinite}
 .map-locate-btn.located{border-color:var(--ok);color:var(--ok)}
@@ -923,6 +923,14 @@ var DB = {
   },
 
   _pullAll: function() {
+    // Pull catégories EN PREMIER pour que les markers s'affichent correctement
+    DB.get('categories', function(err, catRows) {
+      if(!err && catRows && catRows.length) {
+        S.categories = catRows.map(function(r){
+          return {id:r.id,name:r.name,icon:r.icon,color:r.color,type:r.type,anim:r.anim||'none'};
+        });
+      }
+    });
     // Pull memories
     DB.get('memories', function(err, rows) {
       if(err || !rows) return;
@@ -984,10 +992,12 @@ var DB = {
       if(changed) {
         STORAGE.save();
       }
-      // Toujours re-render la carte pour afficher les marqueurs Supabase
-      if(NAV.cur === 'map') MAP.render();
-      if(NAV.cur === 'list') LIST.render();
-      if(NAV.cur === 'stats') STATS.render();
+      // Re-render après délai pour laisser les catégories charger
+      setTimeout(function(){
+        if(NAV.cur === 'map') MAP.render();
+        if(NAV.cur === 'list') LIST.render();
+        if(NAV.cur === 'stats') STATS.render();
+      }, 300);
     });
 
     // Pull wishlist
@@ -1014,13 +1024,7 @@ var DB = {
       SPLASH.update();
     });
 
-    // Pull categories
-    DB.get('categories', function(err, rows) {
-      if(err || !rows || !rows.length) return;
-      S.categories = rows.map(function(r){
-        return {id:r.id,name:r.name,icon:r.icon,color:r.color,type:r.type,anim:r.anim};
-      });
-    });
+
   }
 };
 
@@ -2265,7 +2269,9 @@ var JOURNAL={
   remove:function(id){
     UI.confirm('Supprimer cette entrée ?','',function(){
       S.journal=S.journal.filter(function(j){return j.id!==id});
-      STORAGE.save();JOURNAL.render();UI.toast('Entrée supprimée','');
+      STORAGE.save();
+      DB.del('journal', id, null);
+      JOURNAL.render();UI.toast('Entrée supprimée','');
     });
   }
 };
