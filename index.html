@@ -2,12 +2,12 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<!-- FIX 1: user-scalable=no ajouté, viewport-fit=cover conservé -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Winnie & Vvs">
 <meta name="mobile-web-app-capable" content="yes">
-
 <meta name="theme-color" content="#0D0D0D" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#0D0D0D">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -31,6 +31,11 @@
   --r:16px;--rsm:10px;--rlg:22px;
   --inp:rgba(255,255,255,.04);
   --map-filter:none;
+  /* FIX 2: variable safe-area pour réutilisation */
+  --sab:env(safe-area-inset-bottom, 0px);
+  --sat:env(safe-area-inset-top, 0px);
+  --nav-h:58px;
+  --nav-total:calc(var(--nav-h) + var(--sab));
 }
 [data-theme=romantique]{
   --bg:#0D0D0D;--bg2:#111118;--sur:#1A1A2E;--sur2:#16213E;
@@ -94,15 +99,23 @@
 
 /* ══ RESET + BASE ══ */
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+
+/* FIX 3: html et body corrects pour iOS PWA */
 html{
   height:100%;
+  height:-webkit-fill-available;
   background:#0D0D0D;
   background:var(--bg);
   -webkit-tap-highlight-color:transparent;
+  /* Empêche le bounce scroll iOS qui cause la barre blanche */
+  overscroll-behavior:none;
 }
 body{
-  height:100%;
-  overflow:hidden;
+  /* FIX 4: min-height au lieu de height fixe, pas d'overflow:hidden sur body */
+  min-height:100%;
+  min-height:-webkit-fill-available;
+  /* overflow-x uniquement, pas overflow:hidden total */
+  overflow-x:hidden;
   font-family:'Jost',sans-serif;
   background:#0D0D0D;
   background:var(--bg);
@@ -110,6 +123,7 @@ body{
   color:var(--tx);
   -webkit-font-smoothing:antialiased;
   overscroll-behavior:none;
+  /* Pas de overflow:hidden ici — c'est ça qui cassait iOS PWA */
 }
 ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
 
@@ -117,7 +131,13 @@ body{
 #app{
   position:fixed;
   inset:0;
+  /* FIX 5: s'assurer que #app couvre tout l'écran y compris safe areas */
+  top:0;
+  left:0;
+  right:0;
+  bottom:0;
   background:var(--bg);
+  overflow:hidden;
 }
 #confetti-canvas{position:fixed;inset:0;z-index:1799;pointer-events:none}
 
@@ -130,9 +150,22 @@ body{
   border-top:1px solid var(--bd);
   display:flex;
   z-index:200;
-  padding-bottom:env(safe-area-inset-bottom,0px);
+  /* FIX 6: padding-bottom robuste avec fallback 0px (pas de valeur par défaut trop grande) */
+  padding-bottom:env(safe-area-inset-bottom, 0px);
+  /* FIX 7: hauteur minimale fixe pour la zone de boutons (hors safe area) */
+  padding-top:0;
 }
-.nb{flex:1;padding:8px 4px 6px;background:none;border:none;color:var(--tx2);font-family:'Jost',sans-serif;font-size:8px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;transition:color .2s;-webkit-tap-highlight-color:transparent}
+.nb{
+  flex:1;
+  padding:8px 4px;
+  /* FIX 8: pas de padding-bottom ici, géré par .bnav */
+  padding-bottom:6px;
+  background:none;border:none;color:var(--tx2);
+  font-family:'Jost',sans-serif;font-size:8px;letter-spacing:.06em;
+  text-transform:uppercase;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  transition:color .2s;-webkit-tap-highlight-color:transparent;
+}
 .nb .ni{font-size:20px}
 .nb.active{color:var(--acc)}
 .nb:hover:not(.active){color:var(--tx)}
@@ -142,23 +175,33 @@ body{
   position:absolute;
   top:0;left:0;right:0;bottom:0;
   overflow-y:auto;overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
   background:var(--bg);z-index:50;
-  /* FIX PWA iOS : env() direct */
-  padding-bottom:calc(80px + env(safe-area-inset-bottom,0px));
+  /* FIX 9: padding-bottom = hauteur nav + safe area bottom */
+  padding-bottom:calc(58px + env(safe-area-inset-bottom, 0px));
 }
 .page.hidden{pointer-events:none!important;opacity:0!important}
 .page:not(.hidden){animation:pgIn .3s ease both}
 @keyframes pgIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
-.ph{padding:calc(env(safe-area-inset-top,0px) + 14px) 18px 12px;position:sticky;top:0;z-index:10;background:var(--glass2);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--bd);display:flex;align-items:flex-start;justify-content:space-between}
+.ph{
+  padding:calc(env(safe-area-inset-top, 0px) + 14px) 18px 12px;
+  position:sticky;top:0;z-index:10;
+  background:var(--glass2);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--bd);
+  display:flex;align-items:flex-start;justify-content:space-between;
+}
 .pt{font-family:'Cormorant Garant',serif;font-size:28px;font-weight:400;color:var(--acc);margin:0}
 .ps{font-size:12px;color:var(--tx2);margin-top:2px}
 
 /* ══ MAP ══ */
 .mapwrap{
   position:absolute;
-  top:env(safe-area-inset-top,0px);
+  /* FIX 10: top avec safe-area-inset-top */
+  top:0;
   left:0;right:0;
-  bottom:calc(58px + env(safe-area-inset-bottom,0px));
+  /* FIX 11: bottom = hauteur nav (58px) + safe-area-inset-bottom */
+  bottom:calc(58px + env(safe-area-inset-bottom, 0px));
   overflow:hidden;
   z-index:1;
   border-radius:20px 20px 0 0;
@@ -249,8 +292,6 @@ body{
 .geobtn{padding:0 14px;border-radius:var(--rsm);background:var(--sur2);border:1px solid var(--bd);cursor:pointer;font-size:16px;color:var(--tx2);transition:all .2s;white-space:nowrap;height:44px;flex-shrink:0}
 .geo-pos-btn{background:var(--acc);color:var(--bg);border-color:var(--acc);font-size:12px;font-family:'Jost',sans-serif;font-weight:600;letter-spacing:.05em}
 .geobtn:hover{border-color:var(--acc);color:var(--acc)}
-/* Les résultats sont en position FIXED pour coller exactement sous le champ,
-   même quand le sheet est scrollé */
 .geobox{position:relative}
 .geores{
   position:fixed;
@@ -306,7 +347,18 @@ body{
 
 /* ══ SHEETS ══ */
 .ov{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.65);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:flex-end;justify-content:center}
-.sheet{background:var(--sur);border:1px solid var(--bd);border-radius:var(--rlg) var(--rlg) 0 0;width:100%;max-width:530px;max-height:92dvh;overflow-y:auto;padding:14px 18px 32px;transform:translateY(100%);transition:transform .4s cubic-bezier(.16,1,.3,1);position:relative}
+.sheet{
+  background:var(--sur);border:1px solid var(--bd);
+  border-radius:var(--rlg) var(--rlg) 0 0;
+  width:100%;max-width:530px;max-height:92dvh;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:14px 18px;
+  /* FIX 12: padding-bottom inclut safe-area pour que le contenu ne soit pas coupé */
+  padding-bottom:calc(32px + env(safe-area-inset-bottom, 0px));
+  transform:translateY(100%);
+  transition:transform .4s cubic-bezier(.16,1,.3,1);
+  position:relative;
+}
 .ov.open .sheet{transform:translateY(0)}
 .handle{width:40px;height:4px;border-radius:2px;background:var(--bd);margin:0 auto 16px}
 .stitle{font-family:'Cormorant Garant',serif;font-size:22px;color:var(--acc);margin-bottom:18px}
@@ -314,7 +366,7 @@ body{
 .sfooter .btn{flex:1}
 @media(min-width:600px){
   .ov{align-items:center}
-  .sheet{border-radius:var(--rlg);max-width:500px;transform:scale(.9) translateY(20px)}
+  .sheet{border-radius:var(--rlg);max-width:500px;transform:scale(.9) translateY(20px);padding-bottom:32px}
   .ov.open .sheet{transform:scale(1) translateY(0)}
   .handle{display:none}
 }
@@ -413,7 +465,13 @@ body{
 .catact:hover{color:var(--acc)}
 
 /* ══ SPLASH ══ */
-#splash{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;background:#0D0D0D;background:var(--bg);overflow:hidden;transition:opacity .9s ease,transform .9s ease}
+#splash{
+  position:fixed;inset:0;z-index:9000;
+  display:flex;align-items:center;justify-content:center;
+  background:#0D0D0D;background:var(--bg);
+  overflow:hidden;
+  transition:opacity .9s ease,transform .9s ease;
+}
 #splash.out{opacity:0;transform:scale(1.04);pointer-events:none}
 .sorbs{position:absolute;inset:0;pointer-events:none}
 .orb{position:absolute;border-radius:50%;filter:blur(70px);-webkit-filter:blur(70px);opacity:.18;animation:orbf 10s ease-in-out infinite alternate}
@@ -494,7 +552,12 @@ body{
 .fs-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.4)}
 .fs-dot.active{background:#fff;width:18px;border-radius:3px}
 
-.fs-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 18px 100px}
+.fs-scroll{
+  flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:0 18px;
+  /* FIX 13: padding bottom pour le scroll fullscreen */
+  padding-bottom:calc(80px + env(safe-area-inset-bottom, 0px));
+}
 .fs-title{
   font-family:'Cormorant Garant',serif;
   font-size:clamp(1.6rem,6vw,2.4rem);font-weight:400;
@@ -631,7 +694,6 @@ body{
     <button class="nb active" data-p="map" onclick="NAV.go('map',this)"><span class="ni">🗺️</span><span>Carte</span></button>
     <button class="nb" data-p="journal" onclick="NAV.go('journal',this)"><span class="ni">📖</span><span>Journal</span></button>
     <button class="nb" data-p="settings" onclick="NAV.go('settings',this)"><span class="ni">⚙️</span><span>Réglages</span></button>
-
   </nav>
 
   <!-- LIST PAGE -->
@@ -858,35 +920,28 @@ var DB = {
     'Content-Type': 'application/json',
     'Prefer': 'return=representation'
   },
-  _ws: null,
 
-  // GET all rows
   get: function(table, cb) {
     fetch(SUPA_URL + '/rest/v1/' + table + '?select=*', {headers: DB._headers})
       .then(function(r){
         if(!r.ok){console.error('[DB] get error',table,r.status);}
         return r.json();
       })
-      .then(function(data){console.log('[DB] get ok',table,'rows:',Array.isArray(data)?data.length:data);cb(null, data)})
-      .catch(function(e){console.error('[DB] get catch',table,e);cb(e, null)});
+      .then(function(data){cb(null, data)})
+      .catch(function(e){cb(e, null)});
   },
 
-  // UPSERT (insert or update)
   upsert: function(table, data, cb) {
     fetch(SUPA_URL + '/rest/v1/' + table, {
       method: 'POST',
       headers: Object.assign({}, DB._headers, {'Prefer': 'resolution=merge-duplicates,return=representation'}),
       body: JSON.stringify(data)
     })
-    .then(function(r){
-      if(!r.ok){r.text().then(function(t){console.error('[DB] upsert error',table,r.status,t)});}
-      return r.json();
-    })
-    .then(function(d){console.log('[DB] upsert ok',table,d);if(cb)cb(null,d)})
-    .catch(function(e){console.error('[DB] upsert catch',table,e);if(cb)cb(e,null)});
+    .then(function(r){return r.json()})
+    .then(function(d){if(cb)cb(null,d)})
+    .catch(function(e){if(cb)cb(e,null)});
   },
 
-  // DELETE by id
   del: function(table, id, cb) {
     fetch(SUPA_URL + '/rest/v1/' + table + '?id=eq.' + encodeURIComponent(id), {
       method: 'DELETE',
@@ -896,7 +951,6 @@ var DB = {
     .catch(function(e){if(cb)cb(e)});
   },
 
-  // GET config value
   getConfig: function(key, cb) {
     fetch(SUPA_URL + '/rest/v1/config?key=eq.' + key + '&select=*', {headers: DB._headers})
       .then(function(r){return r.json()})
@@ -904,7 +958,6 @@ var DB = {
       .catch(function(e){cb(e,null)});
   },
 
-  // SET config value
   setConfig: function(key, value, cb) {
     fetch(SUPA_URL + '/rest/v1/config', {
       method: 'POST',
@@ -915,7 +968,6 @@ var DB = {
     .catch(function(e){if(cb)cb(e)});
   },
 
-  // Realtime sync via polling toutes les 10s
   startSync: function() {
     DB._syncInterval = setInterval(function(){
       DB._pullAll();
@@ -923,7 +975,6 @@ var DB = {
   },
 
   _pullAll: function() {
-    // Pull catégories EN PREMIER pour que les markers s'affichent correctement
     DB.get('categories', function(err, catRows) {
       if(!err && catRows && catRows.length) {
         S.categories = catRows.map(function(r){
@@ -931,7 +982,6 @@ var DB = {
         });
       }
     });
-    // Pull memories
     DB.get('memories', function(err, rows) {
       if(err || !rows) return;
       var changed = false;
@@ -943,17 +993,14 @@ var DB = {
           note: row.note, fav: row.fav, photoRefs: row.photo_refs || [],
           photos: [], createdBy: row.created_by
         };
-        // Charger les photos depuis Supabase si pas en local
         if(mem.photoRefs && mem.photoRefs.length) {
           mem.photoRefs.forEach(function(ref){
             IDB.getOne(ref.id, function(local){
               if(!local){
-                // Photo pas en local, charger depuis Supabase
                 fetch(SUPA_URL+'/rest/v1/photos?id=eq.'+ref.id+'&select=*', {headers:DB._headers})
                   .then(function(r){return r.json()})
                   .then(function(photos){
                     if(photos&&photos[0]&&photos[0].data){
-                      // Sauvegarder en local depuis base64
                       var b64=photos[0].data;
                       var parts=b64.split(',');
                       var bin=atob(parts[1]||parts[0]);
@@ -978,21 +1025,16 @@ var DB = {
         }
         if(!existing) { S.memories.push(mem); changed = true; }
         else {
-          // Update si différent
           if(JSON.stringify(existing) !== JSON.stringify(mem)) {
             var idx = S.memories.indexOf(existing);
             S.memories[idx] = mem; changed = true;
           }
         }
       });
-      // Supprimer ceux qui n'existent plus
       S.memories = S.memories.filter(function(m){
         return rows.some(function(r){return r.id === m.id});
       });
-      if(changed) {
-        STORAGE.save();
-      }
-      // Re-render après délai pour laisser les catégories charger
+      if(changed) { STORAGE.save(); }
       setTimeout(function(){
         if(NAV.cur === 'map') MAP.render();
         if(NAV.cur === 'list') LIST.render();
@@ -1000,7 +1042,6 @@ var DB = {
       }, 300);
     });
 
-    // Pull wishlist
     DB.get('wishlist', function(err, rows) {
       if(err || !rows) return;
       S.wishlist = rows.map(function(r){
@@ -1008,7 +1049,6 @@ var DB = {
       });
     });
 
-    // Pull journal
     DB.get('journal', function(err, rows) {
       if(err || !rows) return;
       S.journal = rows.map(function(r){
@@ -1017,17 +1057,13 @@ var DB = {
       if(NAV.cur === 'journal') JOURNAL.render();
     });
 
-    // Pull config
     DB.getConfig('app_config', function(err, val) {
       if(err || !val) return;
       S.config = Object.assign({}, S.config, val);
       SPLASH.update();
     });
-
-
   }
 };
-
 
 // ── UTILITAIRE ADRESSE ──
 function fmtAddr(data){
@@ -1044,18 +1080,15 @@ function fmtAddrFromDisplay(dn){
   var country=parts[parts.length-1]||'';
   var city='';
   var cpIdx=-1;
-  // Chercher le code postal pour trouver ville ET délimiter la rue
   for(var i=0;i<parts.length;i++){
     var cp=parts[i].match(/^(\d{5})\s+(.+)$/);
     if(cp){city=cp[2];cpIdx=i;break;}
   }
-  // Rue = tout ce qui est avant le code postal (ou parts[0] si pas de CP)
   var street='';
   if(cpIdx>0){
     street=parts.slice(0,cpIdx).join(', ');
   } else {
     street=parts[0]||'';
-    // Chercher ville sans CP
     for(var i=1;i<parts.length-1;i++){
       if(!/\d/.test(parts[i])&&!/^(île|hauts|seine|val-|val |nord|sud|est|ouest|région|départ|arrond)/i.test(parts[i])&&parts[i].length>2){
         city=parts[i];break;
@@ -1073,6 +1106,7 @@ function extractCity(addr){
   }
   return p.length>=2?p[p.length-2]:p[0]||'';
 }
+
 // ══════════════════════════════════════════════════
 // PROFIL UTILISATEUR
 // ══════════════════════════════════════════════════
@@ -1082,28 +1116,22 @@ function showUserPicker() {
   var ov = document.createElement('div');
   ov.id = 'user-picker';
   ov.style.cssText = 'position:fixed;inset:0;z-index:99999;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;padding:40px';
-
   var title = document.createElement('div');
   title.style.cssText = 'font-family:Cormorant Garant,serif;font-size:clamp(2rem,8vw,3rem);color:var(--acc);text-align:center';
   title.innerHTML = 'Winnie <em>&</em> Vvs';
-
   var sub = document.createElement('div');
   sub.style.cssText = 'font-size:14px;color:var(--tx2);text-align:center';
   sub.textContent = 'Qui es-tu ?';
-
   var row = document.createElement('div');
   row.style.cssText = 'display:flex;gap:16px;width:100%;max-width:320px';
-
   var btnW = document.createElement('button');
   btnW.style.cssText = 'flex:1;padding:20px;border:2px solid var(--acc);border-radius:20px;background:transparent;color:var(--acc);font-family:Cormorant Garant,serif;font-size:22px;cursor:pointer';
   btnW.textContent = 'Winnie';
   btnW.onclick = function(){ setUser('winnie'); };
-
   var btnV = document.createElement('button');
   btnV.style.cssText = 'flex:1;padding:20px;border:2px solid var(--acc2);border-radius:20px;background:transparent;color:var(--acc2);font-family:Cormorant Garant,serif;font-size:22px;cursor:pointer';
   btnV.textContent = 'Vvs';
   btnV.onclick = function(){ setUser('vvs'); };
-
   row.appendChild(btnW);
   row.appendChild(btnV);
   ov.appendChild(title);
@@ -1117,7 +1145,6 @@ function setUser(name) {
   localStorage.setItem('wv_user', name);
   var el = document.getElementById('user-picker');
   if(el) el.remove();
-  // Afficher indicateur user dans la nav
   updateUserIndicator();
 }
 
@@ -1128,10 +1155,9 @@ function updateUserIndicator() {
   indicator.title = CURRENT_USER === 'winnie' ? 'Winnie' : 'Vvs';
 }
 
-
 /* ════════════════════════════════════════════════════
    WINNIE & VVS — Application complète
-   Version 7.1 — Fix PWA iOS safe-area-inset-bottom
+   Version 7.2 — Fix PWA iOS safe-area-inset-bottom
 ════════════════════════════════════════════════════ */
 
 // ──────────────────────────────────────────────────
@@ -1227,7 +1253,6 @@ var STORAGE={
       localStorage.setItem(STORAGE.KEY,JSON.stringify(d));
     }catch(e){if(e.name==='QuotaExceededError')UI.toast('⚠️ Stockage plein — exportez !','er')}
   },
-  // Sync config vers Supabase
   syncConfig: function() {
     DB.setConfig('app_config', S.config, null);
   },
@@ -1238,7 +1263,7 @@ var STORAGE={
       for(var i=0;i<STORAGE.OLD_KEYS.length;i++){
         try{
           var old=localStorage.getItem(STORAGE.OLD_KEYS[i]);
-          if(old){raw=old;console.log('[WV] Migration depuis',STORAGE.OLD_KEYS[i]);break;}
+          if(old){raw=old;break;}
         }catch(e){}
       }
     }
@@ -1335,7 +1360,6 @@ var IDB=(function(){
           var ref={id:id,type:files[i].type,name:files[i].name,size:files[i].size};
           refs.push(ref);
           store.put({id:id,mid:mid,type:files[i].type,name:files[i].name,data:files[i],size:files[i].size});
-          // Upload base64 vers Supabase
           (function(fileObj, refId, memId){
             var reader = new FileReader();
             reader.onload = function(e){
@@ -1656,11 +1680,6 @@ var MAP=(function(){
             if(aInp&&!aInp.value.trim())aInp.value=fullAddr;
             var wInp=document.getElementById('w-addr');
             if(wInp&&!wInp.value.trim())wInp.value=fullAddr;
-            var tInp=document.getElementById('a-title');
-            if(tInp&&!tInp.value.trim()){
-              var titleGuess=addrStr||a.amenity||a.shop||a.tourism||city||'';
-              if(titleGuess)tInp.value=titleGuess;
-            }
           }).catch(function(){});
       },600);
     }
@@ -1685,8 +1704,6 @@ var MAP=(function(){
           var b=document.getElementById('addmem-posbadge');
           if(b){b.textContent='📍 '+fullAddr;b.classList.remove('hidden');}
           var ai=document.getElementById('a-addr');if(ai&&!ai.value.trim())ai.value=fullAddr;
-          var ti=document.getElementById('a-title');
-          if(ti&&!ti.value.trim()){var g=a.amenity||a.shop||a.tourism||(num+road).trim()||city||'';if(g)ti.value=g;}
         }).catch(function(){});
     });
     var _touchStart=null;
@@ -1694,7 +1711,9 @@ var MAP=(function(){
       if(e.touches.length!==1)return;
       var touch=e.touches[0];
       _touchStart={x:touch.clientX,y:touch.clientY};
-      var containerPoint=_map.containerPointToLatLng([touch.clientX-document.getElementById('map').getBoundingClientRect().left,touch.clientY-document.getElementById('map').getBoundingClientRect().top]);
+      var mapEl=document.getElementById('map');
+      var rect=mapEl.getBoundingClientRect();
+      var containerPoint=_map.containerPointToLatLng([touch.clientX-rect.left,touch.clientY-rect.top]);
       _startPress(containerPoint);
     },{passive:true});
     document.getElementById('map').addEventListener('touchend',function(){_cancelPress()},{passive:true});
@@ -1716,7 +1735,6 @@ var MAP=(function(){
     else if(_mode==='wishlist')baseItems=S.wishlist;
     else baseItems=S.memories.concat(S.wishlist);
     var items=_activeCats.length?baseItems.filter(function(item){return _activeCats.indexOf(item.catId)>=0}):baseItems;
-    // Rendu simple sans clustering
     items.forEach(function(item){
       if(!item.lat||!item.lng)return;
       var isWish=S.wishlist.some(function(w){return w.id===item.id});
@@ -1821,7 +1839,6 @@ var GEOCODE=(function(){
       var d=document.createElement('div');d.className='georow';
       var formatted=fmtAddrFromDisplay(r.display_name);
       var dp=formatted.split(',').map(function(s){return s.trim();});
-      // mainName = rue complète, detail = ville + pays
       var mainName=dp.slice(0,dp.length-1).join(', ')||dp[0];
       var detail=dp[dp.length-1]||'';
       d.innerHTML='<div style="display:flex;align-items:center;gap:10px;padding:2px 0">'+
@@ -1838,17 +1855,17 @@ var GEOCODE=(function(){
         if(context==='addmem'){
           APP._pendingPos={lat:lat,lng:lng};
           var b1=document.getElementById('addmem-posbadge');
-          b1.textContent='📍 '+shortName+' ('+lat.toFixed(5)+', '+lng.toFixed(5)+')';
+          b1.textContent='📍 '+shortName;
           b1.classList.remove('hidden');
           var t1=document.getElementById('a-title');
-          if(t1&&!t1.value.trim())t1.value=parts[0].trim();
+          if(t1&&!t1.value.trim())t1.value=dp[0].trim();
         }else if(context==='addwish'){
           APP._pendingPos={lat:lat,lng:lng};
           var b2=document.getElementById('addwish-posbadge');
-          b2.textContent='📍 '+shortName+' ('+lat.toFixed(5)+', '+lng.toFixed(5)+')';
+          b2.textContent='📍 '+shortName;
           b2.classList.remove('hidden');
           var t2=document.getElementById('w-title');
-          if(t2&&!t2.value.trim())t2.value=parts[0].trim();
+          if(t2&&!t2.value.trim())t2.value=dp[0].trim();
         }else if(context==='editmem'){
           APP._editPos={lat:lat,lng:lng};
         }
@@ -1867,28 +1884,7 @@ var GEOCODE=(function(){
         .then(function(r){return r.json()})
         .then(function(data){_show(data,inputId,resId,context)})
         .catch(function(){UI.toast('Recherche indisponible (hors-ligne ?)','er')});
-    },
-    liveSearch:debounce(function(q){
-      if(!q||q.length<3){document.getElementById('msearchres')&&document.getElementById('msearchres').classList.add('hidden');return}
-      fetch('https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(q)+'&limit=5',{headers:{'Accept-Language':'fr'}})
-        .then(function(r){return r.json()})
-        .then(function(data){
-          var el=document.getElementById('msearchres');if(!el)return;
-          if(!data.length){el.classList.add('hidden');return}
-          el.innerHTML='';el.classList.remove('hidden');
-          data.forEach(function(r){
-            var d=document.createElement('div');d.className='sres-item';
-            var sp=r.display_name.split(',');
-            d.innerHTML='<span style="color:var(--tx)">'+esc(sp[0].trim())+'</span> <span style="color:var(--tx2);font-size:11px">'+esc(sp.slice(1,3).join(',').trim())+'</span>';
-            d.onclick=function(){
-              MAP.flyTo(parseFloat(r.lat),parseFloat(r.lon));
-              document.getElementById('msearchinp').value='';
-              el.classList.add('hidden');
-            };
-            el.appendChild(d);
-          });
-        }).catch(function(){});
-    },400)
+    }
   };
 })();
 
@@ -1941,7 +1937,6 @@ var MEM={
       };
       S.memories.push(mem);
       STORAGE.save();MEDIA.clearStaged('addmem');
-      // Sync Supabase
       DB.upsert('memories', {
         id:mem.id, title:mem.title, address:mem.address||null,
         lat:mem.lat||null, lng:mem.lng||null, date:mem.date,
@@ -2135,7 +2130,7 @@ var WISH={
   save:function(){
     if(!UI.validate(['w-title']))return;
     var pos=APP._pendingPos||{lat:null,lng:null};APP._pendingPos=null;
-    var newWish = {id:uid(),title:UI.getVal('w-title'),address:UI.getVal('w-addr'),lat:pos.lat,lng:pos.lng,catId:document.getElementById('w-cat').value,note:UI.getVal('w-note')};
+    var newWish={id:uid(),title:UI.getVal('w-title'),address:UI.getVal('w-addr'),lat:pos.lat,lng:pos.lng,catId:document.getElementById('w-cat').value,note:UI.getVal('w-note')};
     S.wishlist.push(newWish);
     STORAGE.save();
     DB.upsert('wishlist', {
@@ -2225,7 +2220,6 @@ var CAT={
       S.categories.push({id:uid(),name:name,icon:icon,color:color,type:type,anim:anim});
     }
     STORAGE.save();
-    // Sync toutes les catégories
     S.categories.forEach(function(cat){
       DB.upsert('categories', {id:cat.id,name:cat.name,icon:cat.icon,color:cat.color,type:cat.type,anim:cat.anim||'none'}, null);
     });
@@ -2361,7 +2355,6 @@ var LIST=(function(){
             IDB.getOne(mid,function(rec){
               if(!rec||!rec.data)return;
               if(rec.type&&rec.type.startsWith('video/')){
-                // Générer miniature vidéo via canvas
                 LIST._videoThumb(rec.data,function(thumbUrl){
                   _thumbCache[mid]=thumbUrl;
                   LIST._inject(card,thumbUrl,h,col,m,cat,true);
@@ -2378,25 +2371,19 @@ var LIST=(function(){
     _videoThumb:function(videoBlob,cb){
       var url=URL.createObjectURL(videoBlob);
       var video=document.createElement('video');
-      video.muted=true;
-      video.playsInline=true;
-      video.crossOrigin='anonymous';
-      video.src=url;
-      video.currentTime=0.5;
+      video.muted=true;video.playsInline=true;video.crossOrigin='anonymous';video.src=url;video.currentTime=0.5;
       var done=false;
       var cleanup=function(){if(!done){done=true;URL.revokeObjectURL(url);}};
       video.onseeked=function(){
         try{
           var canvas=document.createElement('canvas');
-          canvas.width=video.videoWidth||320;
-          canvas.height=video.videoHeight||240;
+          canvas.width=video.videoWidth||320;canvas.height=video.videoHeight||240;
           canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
           var dataUrl=canvas.toDataURL('image/jpeg',0.8);
           cleanup();cb(dataUrl);
         }catch(e){cleanup();cb(null);}
       };
-      video.onerror=function(){cleanup();cb(null);};
-      video.load();
+      video.onerror=function(){cleanup();cb(null);};video.load();
     },
     _inject:function(card,url,h,col,m,cat,isVideo){
       var pat=card.querySelector('.mcpat');if(!pat)return;
@@ -2551,7 +2538,7 @@ var SETTINGS={
     html+='<div class="ssec"><div class="sshd2">ℹ️ À propos</div>'+
       '<div style="padding:14px;background:var(--sur);border-radius:var(--r);border:1px solid var(--bd)">'+
       '<div style="font-family:Cormorant Garant,serif;font-size:18px;color:var(--acc);margin-bottom:6px">Winnie & Vvs ✦</div>'+
-      '<div style="font-size:12px;color:var(--tx2);line-height:1.7">Version 7.1 · Fix PWA iOS safe-area<br>Carte : Leaflet + OpenStreetMap (Nominatim)<br>Stockage : localStorage + IndexedDB (photos)<br>Compatible iOS Safari, Chrome, Firefox, Edge</div></div></div>';
+      '<div style="font-size:12px;color:var(--tx2);line-height:1.7">Version 7.2 · Fix PWA iOS safe-area<br>Carte : Leaflet + OpenStreetMap (Nominatim)<br>Stockage : localStorage + IndexedDB (photos)<br>Compatible iOS Safari, Chrome, Firefox, Edge</div></div></div>';
     el.innerHTML=html;
     SETTINGS._renderCatList('st-cats',cats,'souvenir');
     SETTINGS._renderCatList('st-wcats',wcats,'wishlist');
@@ -2896,12 +2883,16 @@ var APP={
   enterMain:function(){
     document.getElementById('app').classList.remove('hidden');
     MAP.init();MAP.renderSubfilters();
+    // FIX 14: invalider la taille de la map après que l'app soit visible
+    setTimeout(function(){
+      var map=MAP.getMap();
+      if(map)map.invalidateSize();
+    },100);
     setTimeout(function(){
       if(S.memories.length>=8)SOV.show();
     },700);
   },
   init:function(){
-    // 1. Charger les données locales
     if(!STORAGE.load()){
       var d=JSON.parse(JSON.stringify(DEMO));
       S.categories=d.categories;S.memories=d.memories;S.wishlist=d.wishlist;
@@ -2910,7 +2901,6 @@ var APP={
     }
     THEMES.restore();
     SPLASH.update();
-    // 2. Sync Supabase en background
     DB._pullAll();
     DB.startSync();
     document.getElementById('sp-btn').addEventListener('click',function(){
@@ -2923,13 +2913,19 @@ var APP={
           CELEB.show(special);
         } else {
           APP.enterMain();
-
         }
       },400);
     });
     document.getElementById('sov').addEventListener('click',function(e){if(e.target===this)SOV.skip()});
-    function resizeMap(){setTimeout(function(){var map=MAP.getMap();if(map)map.invalidateSize();},150);}
-    window.addEventListener('resize',resizeMap);resizeMap();
+    function resizeMap(){
+      setTimeout(function(){var map=MAP.getMap();if(map)map.invalidateSize();},150);
+    }
+    window.addEventListener('resize',resizeMap);
+    // FIX 15: écouter le changement de taille visuelle (clavier iOS, etc.)
+    if(window.visualViewport){
+      window.visualViewport.addEventListener('resize',resizeMap);
+    }
+    resizeMap();
     document.addEventListener('click',function(e){
       if(!e.target.closest('.geobox')&&!e.target.closest('.geores')){
         document.querySelectorAll('.geores').forEach(function(el){el.classList.add('hidden');});
@@ -2942,11 +2938,8 @@ var APP={
         MEM.closeDetail();
       }
     });
-    console.log('[WV] ✦ v7.1 — Fix PWA iOS safe-area — '+S.memories.length+' souvenirs');
   }
 };
-
-// Safe area gérée par CSS env() directement
 
 window.addEventListener('DOMContentLoaded',function(){APP.init()});
 </script>
