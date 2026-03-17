@@ -2340,7 +2340,10 @@ var LIST=(function(){
         var cat=S.categories.find(function(c){return c.id===m.catId});
         var col=cat?cat.color:'#C9A96E';
         var h=HEIGHTS[i%HEIGHTS.length];
-        var firstImg=m.photoRefs&&m.photoRefs.find(function(r){return r.type&&r.type.startsWith('image/')});
+        var firstImg=m.photoRefs&&(
+          m.photoRefs.find(function(r){return r.type&&r.type.startsWith('image/')}) ||
+          m.photoRefs.find(function(r){return r.type&&r.type.startsWith('video/')})
+        );
         var card=document.createElement('div');card.className='mcard';card.style.animationDelay=(i*.04)+'s';
         card.innerHTML='<div class="mcpat" style="height:'+h+'px;background:'+col+'18">'+
           PATS[i%PATS.length](col,i)+
@@ -2353,20 +2356,52 @@ var LIST=(function(){
         grid.appendChild(card);
         if(firstImg){
           var mid=firstImg.id;
-          if(_thumbCache[mid]){LIST._inject(card,_thumbCache[mid],h,col,m,cat)}
+          if(_thumbCache[mid]){LIST._inject(card,_thumbCache[mid],h,col,m,cat,firstImg&&firstImg.type&&firstImg.type.startsWith('video/'))}
           else{
             IDB.getOne(mid,function(rec){
               if(!rec||!rec.data)return;
-              var url=URL.createObjectURL(rec.data);
-              _thumbCache[mid]=url;LIST._inject(card,url,h,col,m,cat);
+              if(rec.type&&rec.type.startsWith('video/')){
+                // Générer miniature vidéo via canvas
+                LIST._videoThumb(rec.data,function(thumbUrl){
+                  _thumbCache[mid]=thumbUrl;
+                  LIST._inject(card,thumbUrl,h,col,m,cat,true);
+                });
+              } else {
+                var url=URL.createObjectURL(rec.data);
+                _thumbCache[mid]=url;LIST._inject(card,url,h,col,m,cat,false);
+              }
             });
           }
         }
       });
     },
-    _inject:function(card,url,h,col,m,cat){
+    _videoThumb:function(videoBlob,cb){
+      var url=URL.createObjectURL(videoBlob);
+      var video=document.createElement('video');
+      video.muted=true;
+      video.playsInline=true;
+      video.crossOrigin='anonymous';
+      video.src=url;
+      video.currentTime=0.5;
+      var done=false;
+      var cleanup=function(){if(!done){done=true;URL.revokeObjectURL(url);}};
+      video.onseeked=function(){
+        try{
+          var canvas=document.createElement('canvas');
+          canvas.width=video.videoWidth||320;
+          canvas.height=video.videoHeight||240;
+          canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
+          var dataUrl=canvas.toDataURL('image/jpeg',0.8);
+          cleanup();cb(dataUrl);
+        }catch(e){cleanup();cb(null);}
+      };
+      video.onerror=function(){cleanup();cb(null);};
+      video.load();
+    },
+    _inject:function(card,url,h,col,m,cat,isVideo){
       var pat=card.querySelector('.mcpat');if(!pat)return;
-      pat.innerHTML='<img src="'+url+'" style="width:100%;height:'+h+'px;object-fit:cover;display:block" alt="'+esc(m.title)+'">'+
+      pat.innerHTML='<img src="'+url+'" style="width:100%;height:'+h+'px;object-fit:cover;display:block" alt="'+esc(m.title)+'">'
+        +(isVideo?'<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-60%);width:36px;height:36px;background:rgba(0,0,0,0.55);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;pointer-events:none">▶️</div>':'')+
         '<div class="mcover"></div>'+
         (m.fav?'<div class="mcfav">⭐</div>':'')+
         '<div class="mccat" style="background:'+col+'30;color:'+col+';border:1px solid '+col+'50">'+(cat?cat.icon+' '+cat.name:'—')+'</div>'+
