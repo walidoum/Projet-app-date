@@ -1688,7 +1688,6 @@ var MAP=(function(){
           var ti=document.getElementById('a-title');
           if(ti&&!ti.value.trim()){var g=a.amenity||a.shop||a.tourism||(num+road).trim()||city||'';if(g)ti.value=g;}
         }).catch(function(){});
-    _map.on('zoomend',function(){render();});
     });
     var _touchStart=null;
     document.getElementById('map').addEventListener('touchstart',function(e){
@@ -1717,99 +1716,31 @@ var MAP=(function(){
     else if(_mode==='wishlist')baseItems=S.wishlist;
     else baseItems=S.memories.concat(S.wishlist);
     var items=_activeCats.length?baseItems.filter(function(item){return _activeCats.indexOf(item.catId)>=0}):baseItems;
-    // Clustering zoom-aware
-    var zoom=_map.getZoom();
-    var CLUSTER_R=zoom<8?0.12:zoom<11?0.04:zoom<13?0.012:zoom<15?0.003:0;
-    var clusters=[];
+    // Rendu simple sans clustering
     items.forEach(function(item){
       if(!item.lat||!item.lng)return;
-      if(CLUSTER_R===0){clusters.push({lat:item.lat,lng:item.lng,items:[item]});return;}
-      var found=false;
-      for(var ci=0;ci<clusters.length;ci++){
-        var c=clusters[ci];
-        var d=Math.sqrt(Math.pow(item.lat-c.lat,2)+Math.pow(item.lng-c.lng,2));
-        if(d<CLUSTER_R){
-          var n=c.items.length;
-          c.lat=(c.lat*n+item.lat)/(n+1);
-          c.lng=(c.lng*n+item.lng)/(n+1);
-          c.items.push(item);found=true;break;
-        }
-      }
-      if(!found)clusters.push({lat:item.lat,lng:item.lng,items:[item]});
-    });
-
-    clusters.forEach(function(cluster){
-      var item=cluster.items[0];
-      var count=cluster.items.length;
       var isWish=S.wishlist.some(function(w){return w.id===item.id});
       var cat=S.categories.find(function(c){return c.id===item.catId});
-      var color=cat?cat.color:'#C9A96E';
-      var icon=cat?cat.icon:'📍';
+      var color=cat?cat.color:'#C9A96E',icon=cat?cat.icon:'📍';
       var anim=(!isWish&&cat&&cat.anim&&cat.anim!=='none')?cat.anim:'';
       var pinClass='cpin'+(isWish?' cpin-wish':'')+(anim?' anim-'+anim:'');
-      var html;
-
-      if(count>1){
-        // Design cluster : bulle centrale avec emoji + compteur flottant
-        // Les pins du dessous sont visibles en cascade (empilés avec décalage)
-        var maxShow=Math.min(count,4);
-        var shadows='';
-        // Générer des "layers" empilés derrière le pin principal
-        for(var pi=maxShow-1;pi>=1;pi--){
-          var ci2=cluster.items[pi];
-          var cc=S.categories.find(function(c){return c.id===ci2.catId;});
-          var ccol=cc?cc.color:color;
-          var cico=cc?cc.icon:icon;
-          var scale=1-(pi*0.12);
-          var ty=pi*5; // décalage vers le bas
-          var tx=pi%2===0?pi*3:-(pi*3); // alternance gauche/droite
-          shadows+='<div class="cpin" style="'
-            +'position:absolute;top:0;left:0;right:0;margin:auto;'
-            +'width:40px;height:40px;'
-            +'background:'+ccol+';'
-            +'transform:translate('+tx+'px,'+ty+'px) scale('+scale+');'
-            +'transform-origin:50% 100%;'
-            +'box-shadow:0 2px 6px rgba(0,0,0,0.4);'
-            +'z-index:'+(10-pi)+'">'
-            +'<span class="cpinicon" style="font-size:17px">'+cico+'</span></div>';
-        }
-        // Pin principal au-dessus
-        html='<div style="width:56px;height:56px;transform:translateY(-50%);position:relative">'
-          +shadows
-          +'<div class="cpin" style="position:absolute;top:0;left:0;right:0;margin:auto;width:40px;height:40px;background:'+color+';z-index:10;box-shadow:0 4px 12px rgba(0,0,0,0.5)">'
-          +'<span class="cpinicon" style="font-size:17px">'+icon+'</span></div>'
-          +'<div style="position:absolute;top:-8px;right:0;'
-          +'background:white;color:'+color+';border:2.5px solid '+color+';'
-          +'border-radius:50%;min-width:22px;height:22px;padding:0 3px;font-size:12px;'
-          +'font-weight:800;display:flex;align-items:center;justify-content:center;'
-          +'font-family:Jost,sans-serif;box-shadow:0 2px 6px rgba(0,0,0,0.35);z-index:20">'
-          +count+'</div></div>';
-      } else {
-        html='<div style="width:40px;height:40px;transform:translateY(-50%)">'
-          +'<div class="'+pinClass+'" style="background:'+color+(isWish?';border-style:dashed':'')+'">'
-          +'<span class="cpinicon">'+icon+'</span></div></div>';
-      }
-
-      var sz=count>1?[56,56]:[40,40];
-      var anchor=count>1?[28,56]:[20,40];
-      var leafIcon=L.divIcon({html:html,className:'',iconSize:sz,iconAnchor:anchor,popupAnchor:[0,-50]});
-      var m=L.marker([cluster.lat,cluster.lng],{icon:leafIcon,zIndexOffset:count>1?200:0});
+      var html='<div style="width:40px;height:40px;transform:translateY(-50%)">'
+        +'<div class="'+pinClass+'" style="background:'+color+(isWish?';border-style:dashed':'')+'">'
+        +'<span class="cpinicon">'+icon+'</span></div></div>';
+      var leafIcon=L.divIcon({html:html,className:'',iconSize:[40,40],iconAnchor:[20,40],popupAnchor:[0,-44]});
+      var m=L.marker([item.lat,item.lng],{icon:leafIcon});
       var fav=item.fav?'⭐ ':'';
       var dateStr=item.date?(' <small style="color:var(--tx2);display:block;margin-top:2px">'+fmtDateShort(item.date)+'</small>'):'';
-      var popup=count>1
-        ?'<b style="color:'+color+';font-family:Cormorant Garant,serif;font-size:15px">'+count+' souvenirs ici</b>'
-         +'<small style="display:block;color:var(--tx2);margin-top:4px">Zoome pour les voir</small>'
-        :'<b style="color:'+color+';font-family:Cormorant Garant,serif;font-size:15px">'+fav+esc(item.title)+'</b>'
-         +(item.address?'<small style="display:block;color:var(--tx2);margin-top:3px">📍 '+esc(item.address)+'</small>':'')+dateStr;
-      m.bindPopup('<div style="font-family:Jost,sans-serif;min-width:140px">'+popup+'</div>',{maxWidth:220});
+      m.bindPopup(
+        '<div style="font-family:Jost,sans-serif;min-width:140px">'+
+        '<b style="color:'+color+';font-family:Cormorant Garant,serif;font-size:15px">'+fav+esc(item.title)+'</b>'+
+        (item.address?'<small style="display:block;color:var(--tx2);margin-top:3px">📍 '+esc(item.address)+'</small>':'')+
+        dateStr+'</div>',{maxWidth:220,className:''}
+      );
       m.on('click',function(e){
         e.originalEvent._fromPin=true;
-        if(count>1){
-          _map.flyTo([cluster.lat,cluster.lng],Math.min(_map.getZoom()+3,17),{animate:true,duration:0.4});
-        } else {
-          if(isWish)WISH.openDetail(item.id);
-          else MEM.openDetail(item.id);
-        }
+        if(isWish)WISH.openDetail(item.id);
+        else MEM.openDetail(item.id);
       });
       m.addTo(_map);
       _markers[item.id]=m;
