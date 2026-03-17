@@ -124,7 +124,7 @@
   z-index: 999;
   display: none;
 }
-.fab-wrap.open ~ .fab-overlay { display: block; }
+/* overlay géré en JS */
 
 /* Carte map-container : plein écran quand FAB actif */
 #map-container {

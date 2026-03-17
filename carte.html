@@ -12,19 +12,10 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garant:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
-<link rel="stylesheet" href="fab.css">
+<link rel="stylesheet" href="style.css?v=1773763754">
+<link rel="stylesheet" href="fab.css?v=1773763754">
 <style>
-/* Carte occupe tout l'espace hors navbar */
-#map-container{
-  position:fixed;
-  top:0;left:0;right:0;
-  bottom:calc(58px + env(safe-area-inset-bottom,0px));
-  z-index:1;
-}
-@media(display-mode:standalone){
-  #map-container{bottom:calc(58px + env(safe-area-inset-bottom,0px))}
-}
+/* map-container plein écran - géré par fab.css */
 #map{width:100%;height:100%;background:#08080e}
 .leaflet-container{background:#08080e!important}
 .leaflet-control-zoom{border:1px solid var(--bd)!important;border-radius:var(--rsm)!important;overflow:hidden;box-shadow:var(--sh)!important}
@@ -176,7 +167,7 @@
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="core.js"></script>
+<script src="core.js?v=1773763754"></script>
 <script>
 var APP={_pos:null,_cw:null,_epos:null};
 var MEM={

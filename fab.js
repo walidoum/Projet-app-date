@@ -106,12 +106,16 @@ var FAB = {
     FAB._open = true;
     var wrap = document.getElementById('fab-wrap');
     if (wrap) wrap.classList.add('open');
+    var ov = document.getElementById('fab-overlay');
+    if (ov) ov.style.display = 'block';
   },
 
   close: function() {
     FAB._open = false;
     var wrap = document.getElementById('fab-wrap');
     if (wrap) wrap.classList.remove('open');
+    var ov = document.getElementById('fab-overlay');
+    if (ov) ov.style.display = 'none';
   },
 
   go: function(page) {
