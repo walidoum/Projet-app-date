@@ -1041,13 +1041,26 @@ function fmtAddr(data){
 }
 function fmtAddrFromDisplay(dn){
   var parts=dn.split(',').map(function(s){return s.trim();});
-  var street=parts[0]||'';
-  var city='';
   var country=parts[parts.length-1]||'';
-  for(var i=1;i<parts.length-1;i++){
-    var cp=parts[i].match(/^\d{5}\s+(.+)$/);
-    if(cp){city=cp[1];break;}
-    if(!/\d/.test(parts[i])&&!/^(île|région|départ|arrond|grand|hauts|seine|val-|val )/i.test(parts[i])&&parts[i].length>2&&!city)city=parts[i];
+  var city='';
+  var cpIdx=-1;
+  // Chercher le code postal pour trouver ville ET délimiter la rue
+  for(var i=0;i<parts.length;i++){
+    var cp=parts[i].match(/^(\d{5})\s+(.+)$/);
+    if(cp){city=cp[2];cpIdx=i;break;}
+  }
+  // Rue = tout ce qui est avant le code postal (ou parts[0] si pas de CP)
+  var street='';
+  if(cpIdx>0){
+    street=parts.slice(0,cpIdx).join(', ');
+  } else {
+    street=parts[0]||'';
+    // Chercher ville sans CP
+    for(var i=1;i<parts.length-1;i++){
+      if(!/\d/.test(parts[i])&&!/^(île|hauts|seine|val-|val |nord|sud|est|ouest|région|départ|arrond)/i.test(parts[i])&&parts[i].length>2){
+        city=parts[i];break;
+      }
+    }
   }
   return [street,city,country].filter(Boolean).join(', ');
 }
@@ -1704,17 +1717,13 @@ var MAP=(function(){
     else if(_mode==='wishlist')baseItems=S.wishlist;
     else baseItems=S.memories.concat(S.wishlist);
     var items=_activeCats.length?baseItems.filter(function(item){return _activeCats.indexOf(item.catId)>=0}):baseItems;
-    // Clustering zoom-aware avec re-render sur zoomend
+    // Clustering zoom-aware
     var zoom=_map.getZoom();
-    // Rayon de cluster adapté au zoom
-    var CLUSTER_R = zoom<8?0.15 : zoom<11?0.05 : zoom<13?0.015 : zoom<15?0.004 : 0;
+    var CLUSTER_R=zoom<8?0.12:zoom<11?0.04:zoom<13?0.012:zoom<15?0.003:0;
     var clusters=[];
     items.forEach(function(item){
       if(!item.lat||!item.lng)return;
-      if(CLUSTER_R===0){
-        clusters.push({lat:item.lat,lng:item.lng,items:[item]});
-        return;
-      }
+      if(CLUSTER_R===0){clusters.push({lat:item.lat,lng:item.lng,items:[item]});return;}
       var found=false;
       for(var ci=0;ci<clusters.length;ci++){
         var c=clusters[ci];
@@ -1723,8 +1732,7 @@ var MAP=(function(){
           var n=c.items.length;
           c.lat=(c.lat*n+item.lat)/(n+1);
           c.lng=(c.lng*n+item.lng)/(n+1);
-          c.items.push(item);
-          found=true;break;
+          c.items.push(item);found=true;break;
         }
       }
       if(!found)clusters.push({lat:item.lat,lng:item.lng,items:[item]});
@@ -1742,41 +1750,37 @@ var MAP=(function(){
       var html;
 
       if(count>1){
-        // Pins côte à côte, max 5 affichés
-        var maxShow=Math.min(count,5);
-        // Décalages horizontaux pour mettre les pins côte à côte
-        // Chaque pin fait 32px, légèrement chevauchant
-        var pinW=28;
-        var overlap=6;
-        var totalW=maxShow*pinW-(maxShow-1)*overlap;
-        var pins='';
-        for(var pi=0;pi<maxShow;pi++){
+        // Design cluster : bulle centrale avec emoji + compteur flottant
+        // Les pins du dessous sont visibles en cascade (empilés avec décalage)
+        var maxShow=Math.min(count,4);
+        var shadows='';
+        // Générer des "layers" empilés derrière le pin principal
+        for(var pi=maxShow-1;pi>=1;pi--){
           var ci2=cluster.items[pi];
           var cc=S.categories.find(function(c){return c.id===ci2.catId;});
           var ccol=cc?cc.color:color;
           var cico=cc?cc.icon:icon;
-          var xOffset=pi*(pinW-overlap);
-          // Légère rotation alternée pour effet naturel
-          var rot=pi%2===0?-5:5;
-          if(pi===Math.floor(maxShow/2))rot=0;
-          pins+='<div class="cpin" style="'
-            +'position:absolute;'
-            +'width:'+pinW+'px;height:'+pinW+'px;'
-            +'left:'+xOffset+'px;top:4px;'
+          var scale=1-(pi*0.12);
+          var ty=pi*5; // décalage vers le bas
+          var tx=pi%2===0?pi*3:-(pi*3); // alternance gauche/droite
+          shadows+='<div class="cpin" style="'
+            +'position:absolute;top:0;left:0;right:0;margin:auto;'
+            +'width:40px;height:40px;'
             +'background:'+ccol+';'
-            +'transform:rotate('+rot+'deg);'
+            +'transform:translate('+tx+'px,'+ty+'px) scale('+scale+');'
             +'transform-origin:50% 100%;'
-            +'box-shadow:0 3px 8px rgba(0,0,0,0.45);'
-            +'transition:all 0.4s cubic-bezier(0.34,1.56,0.64,1);'
-            +'z-index:'+(maxShow-pi)+'">'
-            +'<span class="cpinicon" style="font-size:13px">'+cico+'</span></div>';
+            +'box-shadow:0 2px 6px rgba(0,0,0,0.4);'
+            +'z-index:'+(10-pi)+'">'
+            +'<span class="cpinicon" style="font-size:17px">'+cico+'</span></div>';
         }
-        var containerW=totalW+8;
-        html='<div style="width:'+containerW+'px;height:46px;transform:translateY(-50%);position:relative;cursor:pointer">'
-          +pins
-          +'<div style="position:absolute;top:-10px;right:-6px;'
-          +'background:white;color:'+color+';border:2px solid '+color+';'
-          +'border-radius:50%;min-width:20px;height:20px;padding:0 3px;font-size:11px;'
+        // Pin principal au-dessus
+        html='<div style="width:56px;height:56px;transform:translateY(-50%);position:relative">'
+          +shadows
+          +'<div class="cpin" style="position:absolute;top:0;left:0;right:0;margin:auto;width:40px;height:40px;background:'+color+';z-index:10;box-shadow:0 4px 12px rgba(0,0,0,0.5)">'
+          +'<span class="cpinicon" style="font-size:17px">'+icon+'</span></div>'
+          +'<div style="position:absolute;top:-8px;right:0;'
+          +'background:white;color:'+color+';border:2.5px solid '+color+';'
+          +'border-radius:50%;min-width:22px;height:22px;padding:0 3px;font-size:12px;'
           +'font-weight:800;display:flex;align-items:center;justify-content:center;'
           +'font-family:Jost,sans-serif;box-shadow:0 2px 6px rgba(0,0,0,0.35);z-index:20">'
           +count+'</div></div>';
@@ -1786,25 +1790,22 @@ var MAP=(function(){
           +'<span class="cpinicon">'+icon+'</span></div></div>';
       }
 
-      var maxShow2=Math.min(count,5);
-      var pinW2=28, ov2=6;
-      var cW=count>1?maxShow2*pinW2-(maxShow2-1)*ov2+8:40;
-      var sz=count>1?[cW,46]:[40,40];
-      var anchor=count>1?[cW/2,46]:[20,40];
+      var sz=count>1?[56,56]:[40,40];
+      var anchor=count>1?[28,56]:[20,40];
       var leafIcon=L.divIcon({html:html,className:'',iconSize:sz,iconAnchor:anchor,popupAnchor:[0,-50]});
       var m=L.marker([cluster.lat,cluster.lng],{icon:leafIcon,zIndexOffset:count>1?200:0});
       var fav=item.fav?'⭐ ':'';
       var dateStr=item.date?(' <small style="color:var(--tx2);display:block;margin-top:2px">'+fmtDateShort(item.date)+'</small>'):'';
       var popup=count>1
         ?'<b style="color:'+color+';font-family:Cormorant Garant,serif;font-size:15px">'+count+' souvenirs ici</b>'
-         +'<small style="display:block;color:var(--tx2);margin-top:4px">Zoome pour les séparer</small>'
+         +'<small style="display:block;color:var(--tx2);margin-top:4px">Zoome pour les voir</small>'
         :'<b style="color:'+color+';font-family:Cormorant Garant,serif;font-size:15px">'+fav+esc(item.title)+'</b>'
          +(item.address?'<small style="display:block;color:var(--tx2);margin-top:3px">📍 '+esc(item.address)+'</small>':'')+dateStr;
       m.bindPopup('<div style="font-family:Jost,sans-serif;min-width:140px">'+popup+'</div>',{maxWidth:220});
       m.on('click',function(e){
         e.originalEvent._fromPin=true;
         if(count>1){
-          _map.flyTo([cluster.lat,cluster.lng],Math.min(_map.getZoom()+3,17),{animate:true,duration:0.5});
+          _map.flyTo([cluster.lat,cluster.lng],Math.min(_map.getZoom()+3,17),{animate:true,duration:0.4});
         } else {
           if(isWish)WISH.openDetail(item.id);
           else MEM.openDetail(item.id);
@@ -1889,8 +1890,9 @@ var GEOCODE=(function(){
       var d=document.createElement('div');d.className='georow';
       var formatted=fmtAddrFromDisplay(r.display_name);
       var dp=formatted.split(',').map(function(s){return s.trim();});
-      var mainName=dp[0];
-      var detail=dp.slice(1).filter(Boolean).join(', ');
+      // mainName = rue complète, detail = ville + pays
+      var mainName=dp.slice(0,dp.length-1).join(', ')||dp[0];
+      var detail=dp[dp.length-1]||'';
       d.innerHTML='<div style="display:flex;align-items:center;gap:10px;padding:2px 0">'+
         '<div style="width:28px;height:28px;border-radius:50%;background:var(--acc);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px">📍</div>'+
         '<div style="flex:1;min-width:0">'+
