@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Winnie et Vvs">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0D0D0D">
+<title>Journal — Winnie & Vvs</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garant:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=1773764775">
+
+<script>try{var _t=JSON.parse(localStorage.getItem('wv_app')||'{}');if(_t.config&&_t.config.theme)document.body.setAttribute('data-theme',_t.config.theme)}catch(e){}</script>
+</head>
+<body>
+<nav class="bnav" id="bnav">
+  <button class="nb" data-p="list" onclick="NAV.go('list')"><span class="ni">📋</span><span>Liste</span></button>
+  <button class="nb" data-p="stats" onclick="NAV.go('stats')"><span class="ni">📊</span><span>Stats</span></button>
+  <button class="nb" data-p="map" onclick="NAV.go('map')"><span class="ni">🗺️</span><span>Carte</span></button>
+  <button class="nb" data-p="journal" onclick="NAV.go('journal')"><span class="ni">📖</span><span>Journal</span></button>
+  <button class="nb" data-p="settings" onclick="NAV.go('settings')"><span class="ni">⚙️</span><span>Réglages</span></button>
+</nav>
+
+<div id="toast"></div>
+<canvas id="cc" style="position:fixed;inset:0;z-index:1799;pointer-events:none"></canvas>
+<div id="cov" class="hidden" onclick="if(event.target===this)CN.no()">
+  <div class="cbox"><h3 id="c-title" class="ctitle"></h3><p id="c-msg" class="cmsg"></p>
+    <div class="cbtns"><button class="btn btn-g" onclick="CN.no()">Annuler</button><button class="btn btn-d" onclick="CN.yes()">Supprimer</button></div>
+  </div>
+</div>
+<div id="lb" class="hidden" onclick="LB.close()">
+  <button class="lbclose" onclick="LB.close()">✕</button>
+  <button class="lbprev" onclick="event.stopPropagation();LB.prev()">‹</button>
+  <button class="lbnext" onclick="event.stopPropagation();LB.next()">›</button>
+  <img id="lb-img" src="" alt="" onclick="event.stopPropagation()">
+</div>
+<div class="ov hidden" id="sh-addjournal" onclick="UI.ovc(event,this)">
+  <div class="sheet"><div class="handle"></div><h3 class="stitle" id="j-stitle">📖 Nouvelle entrée</h3>
+    <input type="hidden" id="j-id">
+    <div class="field"><label>Titre *</label><input type="text" id="j-title" class="inp"></div>
+    <div class="frow">
+      <div class="field"><label>Emoji</label><input type="text" id="j-emoji" class="inp" placeholder="❤️" maxlength="4"></div>
+      <div class="field"><label>Date</label><input type="date" id="j-date" class="inp"></div>
+    </div>
+    <div class="field"><label>Texte *</label><textarea id="j-text" class="inp ta" rows="6"></textarea></div>
+    <div class="field"><label>Lier à un souvenir</label><select id="j-link" class="inp sel-inp"><option value="">— Aucun —</option></select></div>
+    <div class="sfooter"><button class="btn btn-g" onclick="UI.closeSheet('sh-addjournal')">Annuler</button><button class="btn btn-p" onclick="JOURNAL.save()">Publier ✦</button></div>
+  </div>
+</div>
+<div class="content">
+  <div class="ph">
+    <div><h2 class="pt">Notre Journal</h2><p class="ps">Les mots du cœur</p></div>
+    <button class="btn btn-p btn-sm" onclick="UI.openSheet('sh-addjournal')">+ Écrire</button>
+  </div>
+  <div style="padding:14px 16px" id="jlist"></div>
+</div>
+
+<script src="core.js?v=1773764775"></script>
+<script>
+var JOURNAL={
+  render:function(){
+    var el=document.getElementById('jlist');el.innerHTML='';
+    var sorted=S.journal.slice().sort(function(a,b){return b.date.localeCompare(a.date);});
+    if(!sorted.length){el.innerHTML='<div class="empty"><div class="emico">📖</div><div class="emtxt">Aucune entrée.</div></div>';return;}
+    sorted.forEach(function(j){
+      var linked=j.link?S.memories.find(function(m){return m.id===j.link;}):null;
+      var d=document.createElement('div');d.className='jentry';
+      d.innerHTML='<span class="jemoji">'+(j.emoji||'📝')+'</span><div class="jhdr"><div class="jtitle">'+esc(j.title)+'</div><div class="jdate">'+fmtDate(j.date)+'</div></div><div class="jtext">'+esc(j.text)+'</div>'+(linked?'<div class="jlink">'+esc(linked.title)+'</div>':'');
+      var acts=document.createElement('div');acts.className='jacts';
+      var eb=document.createElement('button');eb.className='btn btn-g btn-sm';eb.textContent='Modifier';eb.onclick=function(){JOURNAL.edit(j.id);};acts.appendChild(eb);
+      var db=document.createElement('button');db.className='btn btn-d btn-sm';db.textContent='Supprimer';db.onclick=function(){JOURNAL.remove(j.id);};acts.appendChild(db);
+      d.appendChild(acts);el.appendChild(d);
+    });
+  },
+  save:function(){
+    if(!UI.validate(['j-title','j-text']))return;
+    var eid=UI.get('j-id');
+    var entry={id:eid||uid(),title:UI.get('j-title'),text:UI.get('j-text'),emoji:UI.get('j-emoji')||'❤️',date:UI.get('j-date')||today(),link:document.getElementById('j-link').value};
+    if(eid){var idx=S.journal.findIndex(function(j){return j.id===eid;});if(idx>=0)S.journal[idx]=entry;}else S.journal.unshift(entry);
+    STG.save();DB.upsert('journal',{id:entry.id,title:entry.title,text:entry.text,emoji:entry.emoji,date:entry.date,link:entry.link||null,created_by:'winnie'},null);
+    UI.closeSheet('sh-addjournal');JOURNAL.render();UI.toast(eid?'Entrée modifiée !':'Publié !','ok');
+  },
+  edit:function(id){
+    var j=S.journal.find(function(x){return x.id===id;});if(!j)return;
+    document.getElementById('j-stitle').textContent='Modifier entrée';
+    UI.val('j-id',j.id);UI.val('j-title',j.title);UI.val('j-emoji',j.emoji||'');UI.val('j-date',j.date);UI.val('j-text',j.text);
+    var lnk=document.getElementById('j-link');lnk.innerHTML='<option value="">Aucun</option>';
+    S.memories.forEach(function(m){var o=document.createElement('option');o.value=m.id;o.textContent=m.title;if(m.id===j.link)o.selected=true;lnk.appendChild(o);});
+    UI.openSheet('sh-addjournal');
+  },
+  remove:function(id){
+    UI.confirm('Supprimer cette entrée ?','',function(){
+      S.journal=S.journal.filter(function(j){return j.id!==id;});
+      STG.save();DB.del('journal',id,null);JOURNAL.render();UI.toast('Supprimé','');
+    });
+  }
+};
+document.addEventListener('DOMContentLoaded',function(){initCommon(function(){NAV.cur='journal';JOURNAL.render();});});
+</script>
+</body>
+</html>

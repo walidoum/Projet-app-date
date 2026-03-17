@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Winnie et Vvs">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0D0D0D">
+<title>Stats — Winnie & Vvs</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garant:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=1773764775">
+
+<script>try{var _t=JSON.parse(localStorage.getItem('wv_app')||'{}');if(_t.config&&_t.config.theme)document.body.setAttribute('data-theme',_t.config.theme)}catch(e){}</script>
+</head>
+<body>
+<nav class="bnav" id="bnav">
+  <button class="nb" data-p="list" onclick="NAV.go('list')"><span class="ni">📋</span><span>Liste</span></button>
+  <button class="nb" data-p="stats" onclick="NAV.go('stats')"><span class="ni">📊</span><span>Stats</span></button>
+  <button class="nb" data-p="map" onclick="NAV.go('map')"><span class="ni">🗺️</span><span>Carte</span></button>
+  <button class="nb" data-p="journal" onclick="NAV.go('journal')"><span class="ni">📖</span><span>Journal</span></button>
+  <button class="nb" data-p="settings" onclick="NAV.go('settings')"><span class="ni">⚙️</span><span>Réglages</span></button>
+</nav>
+
+<div id="toast"></div>
+<canvas id="cc" style="position:fixed;inset:0;z-index:1799;pointer-events:none"></canvas>
+<div id="cov" class="hidden" onclick="if(event.target===this)CN.no()">
+  <div class="cbox"><h3 id="c-title" class="ctitle"></h3><p id="c-msg" class="cmsg"></p>
+    <div class="cbtns"><button class="btn btn-g" onclick="CN.no()">Annuler</button><button class="btn btn-d" onclick="CN.yes()">Supprimer</button></div>
+  </div>
+</div>
+<div id="lb" class="hidden" onclick="LB.close()">
+  <button class="lbclose" onclick="LB.close()">✕</button>
+  <button class="lbprev" onclick="event.stopPropagation();LB.prev()">‹</button>
+  <button class="lbnext" onclick="event.stopPropagation();LB.next()">›</button>
+  <img id="lb-img" src="" alt="" onclick="event.stopPropagation()">
+</div>
+<div class="content">
+  <div class="ph"><div><h2 class="pt">Notre Histoire</h2><p class="ps">En chiffres</p></div></div>
+  <div style="padding:16px" id="stats-body"></div>
+</div>
+
+<script src="core.js?v=1773764775"></script>
+<script>
+function renderStats(){
+  var el=document.getElementById('stats-body');el.innerHTML='';
+  var mems=S.memories,favs=mems.filter(function(m){return m.fav;}).length;
+  var cities={};mems.forEach(function(m){var c=cityOf(m.address||'');if(c&&c.length>1&&!/^\d+$/.test(c))cities[c]=(cities[c]||0)+1;});
+  var thisMo=new Date().toISOString().slice(0,7);
+  var kpis=[{icon:'💑',val:mems.length,lbl:'Dates ensemble'},{icon:'⭐',val:favs,lbl:'Favoris'},
+    {icon:'🌍',val:Object.keys(cities).length,lbl:'Villes visitées'},
+    {icon:'🗓️',val:mems.filter(function(m){return m.date&&m.date.slice(0,7)===thisMo;}).length,lbl:'Ce mois-ci'},
+    {icon:'🗺️',val:S.wishlist.length,lbl:'Wishlist'},{icon:'📖',val:S.journal.length,lbl:'Journal'}];
+  var kg=document.createElement('div');kg.className='kgrid';
+  kpis.forEach(function(k){var c=document.createElement('div');c.className='kcard';c.innerHTML='<div class="kicon">'+k.icon+'</div><div class="kval">'+k.val+'</div><div class="klbl">'+k.lbl+'</div>';kg.appendChild(c);});
+  var sorted=mems.slice().sort(function(a,b){return a.date.localeCompare(b.date);});
+  if(sorted[0]){var fc=document.createElement('div');fc.className='kcard';fc.style.gridColumn='1/-1';fc.innerHTML='<div class="kicon">🥂</div><div class="kval" style="font-size:18px">'+esc(sorted[0].title)+'</div><div class="klbl">Premier souvenir — '+fmtDate(sorted[0].date)+'</div>';kg.appendChild(fc);}
+  el.appendChild(kg);
+  var catC={};mems.forEach(function(m){catC[m.catId]=(catC[m.catId]||0)+1;});
+  var dd=S.categories.filter(function(c){return c.type==='souvenir'&&catC[c.id];}).map(function(c){return{name:c.name,icon:c.icon,color:c.color,val:catC[c.id]};});
+  var tot=dd.reduce(function(s,d){return s+d.val;},0);
+  if(dd.length){
+    var dw=document.createElement('div');dw.className='dwrap';
+    var cv=document.createElement('canvas');cv.width=160;cv.height=160;dw.appendChild(cv);
+    var dl=document.createElement('div');dl.className='dleg';
+    dd.forEach(function(d){dl.innerHTML+='<div class="dli"><div class="dldot" style="background:'+d.color+'"></div>'+d.icon+' '+esc(d.name)+'<span class="dlval">'+d.val+'</span></div>';});
+    dw.appendChild(dl);el.appendChild(dw);
+    requestAnimationFrame(function(){
+      var ctx=cv.getContext('2d');var ang=-Math.PI/2;
+      dd.forEach(function(d){var sl=(d.val/tot)*Math.PI*2;ctx.beginPath();ctx.moveTo(80,80);ctx.arc(80,80,70,ang,ang+sl);ctx.closePath();ctx.fillStyle=d.color;ctx.fill();ang+=sl;});
+      var bg=getComputedStyle(document.body).getPropertyValue('--sur').trim()||'#1A1A2E';
+      ctx.beginPath();ctx.arc(80,80,42,0,Math.PI*2);ctx.fillStyle=bg;ctx.fill();
+      var acc=getComputedStyle(document.body).getPropertyValue('--acc').trim()||'#C9A96E';
+      ctx.fillStyle=acc;ctx.font='bold 22px Cormorant Garant,serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(tot,80,80);
+    });
+  }
+  var tc=Object.entries(cities).sort(function(a,b){return b[1]-a[1];}).slice(0,6);var mx=tc[0]?tc[0][1]:1;
+  if(tc.length){
+    var bs=document.createElement('div');bs.innerHTML='<div class="sshd">Villes les plus visitées</div>';
+    tc.forEach(function(c){bs.innerHTML+='<div class="barrow"><div class="barlbl">'+esc(c[0])+'</div><div class="bartrack"><div class="barfill" style="width:0%;background:var(--acc)" data-w="'+Math.round(c[1]/mx*100)+'%"></div></div><div class="barcnt">'+c[1]+'</div></div>';});
+    el.appendChild(bs);setTimeout(function(){bs.querySelectorAll('.barfill').forEach(function(b){b.style.width=b.dataset.w;});},100);
+  }
+  var tl=document.createElement('div');tl.innerHTML='<div class="sshd">Notre timeline</div>';
+  sorted.forEach(function(m,i){
+    var cat=S.categories.find(function(c){return c.id===m.catId;});var col=cat?cat.color:'var(--acc)';
+    var d=document.createElement('div');d.className='tlitem';
+    d.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;width:14px"><div class="tldot" style="background:'+col+'"></div>'+
+      (i<sorted.length-1?'<div style="width:1px;flex:1;background:var(--bd);margin-top:4px;min-height:20px"></div>':'')+
+      '</div><div><div class="tltitle">'+( cat?cat.icon+' ':'')+esc(m.title)+'</div><div class="tldate">'+fmtDate(m.date)+(m.address?' · '+esc(m.address):'')+'</div></div>';
+    tl.appendChild(d);
+  });
+  el.appendChild(tl);
+}
+document.addEventListener('DOMContentLoaded',function(){initCommon(function(){NAV.cur='stats';renderStats();});});
+</script>
+</body>
+</html>

@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Winnie et Vvs">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0D0D0D">
+<title>Liste — Winnie & Vvs</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garant:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=1773764775">
+
+<script>try{var _t=JSON.parse(localStorage.getItem('wv_app')||'{}');if(_t.config&&_t.config.theme)document.body.setAttribute('data-theme',_t.config.theme)}catch(e){}</script>
+</head>
+<body>
+<nav class="bnav" id="bnav">
+  <button class="nb" data-p="list" onclick="NAV.go('list')"><span class="ni">📋</span><span>Liste</span></button>
+  <button class="nb" data-p="stats" onclick="NAV.go('stats')"><span class="ni">📊</span><span>Stats</span></button>
+  <button class="nb" data-p="map" onclick="NAV.go('map')"><span class="ni">🗺️</span><span>Carte</span></button>
+  <button class="nb" data-p="journal" onclick="NAV.go('journal')"><span class="ni">📖</span><span>Journal</span></button>
+  <button class="nb" data-p="settings" onclick="NAV.go('settings')"><span class="ni">⚙️</span><span>Réglages</span></button>
+</nav>
+
+<div id="toast"></div>
+<canvas id="cc" style="position:fixed;inset:0;z-index:1799;pointer-events:none"></canvas>
+<div id="cov" class="hidden" onclick="if(event.target===this)CN.no()">
+  <div class="cbox"><h3 id="c-title" class="ctitle"></h3><p id="c-msg" class="cmsg"></p>
+    <div class="cbtns"><button class="btn btn-g" onclick="CN.no()">Annuler</button><button class="btn btn-d" onclick="CN.yes()">Supprimer</button></div>
+  </div>
+</div>
+<div id="lb" class="hidden" onclick="LB.close()">
+  <button class="lbclose" onclick="LB.close()">✕</button>
+  <button class="lbprev" onclick="event.stopPropagation();LB.prev()">‹</button>
+  <button class="lbnext" onclick="event.stopPropagation();LB.next()">›</button>
+  <img id="lb-img" src="" alt="" onclick="event.stopPropagation()">
+</div>
+
+<div class="ov hidden" id="sh-addmem" onclick="UI.ovc(event,this)">
+  <div class="sheet"><div class="handle"></div><h3 class="stitle">✦ Nouveau souvenir</h3>
+    <div id="am-badge" class="pbadge hidden">📍 Position sélectionnée</div>
+    <div class="field"><label>Nom *</label><input type="text" id="a-title" class="inp" placeholder="ex : Le Petit Châtelet"></div>
+    <div class="field"><label>Adresse</label>
+      <div class="geobox"><input type="text" id="a-addr" class="inp" placeholder="ex : Paris, France" oninput="GEO.live(this.value,'a-addr','a-gr','addmem')" autocomplete="off">
+        <button class="geobtn geobtn-p" onclick="GEO.fill('a-addr','am-badge','a-title')">Loc.</button></div>
+      <div id="a-gr" class="geores hidden"></div></div>
+    <div class="frow">
+      <div class="field"><label>Date *</label><input type="date" id="a-date" class="inp"></div>
+      <div class="field"><label>Catégorie *</label><select id="a-cat" class="inp sel-inp"></select></div>
+    </div>
+    <div class="field"><label>Note</label><textarea id="a-note" class="inp ta" rows="3"></textarea></div>
+    <div class="field"><label>Photos &amp; Vidéos</label>
+      <div class="uzone" onclick="document.getElementById('a-files').click()">📷 Appuyer pour ajouter
+        <input type="file" id="a-files" accept="image/*,video/*" multiple style="display:none" onchange="MEDIA.preview(this,'a-prev','addmem')"></div>
+      <div id="a-prev" class="mpgrid"></div></div>
+    <div class="field"><label>Favori</label><select id="a-fav" class="inp sel-inp"><option value="0">Non</option><option value="1">⭐ Oui</option></select></div>
+    <div class="sfooter"><button class="btn btn-g" onclick="UI.closeSheet('sh-addmem')">Annuler</button><button class="btn btn-p" onclick="MEM.save()">Enregistrer ✦</button></div>
+  </div>
+</div>
+<div class="ov hidden" id="sh-editmem" onclick="UI.ovc(event,this)">
+  <div class="sheet"><div class="handle"></div><h3 class="stitle">✏️ Modifier</h3>
+    <input type="hidden" id="e-id">
+    <div class="field"><label>Nom *</label><input type="text" id="e-title" class="inp"></div>
+    <div class="field"><label>Adresse</label>
+      <div class="geobox"><input type="text" id="e-addr" class="inp" oninput="GEO.live(this.value,'e-addr','e-gr','editmem')" autocomplete="off">
+        <button class="geobtn" onclick="GEO.fill('e-addr',null,null)">📍</button></div>
+      <div id="e-gr" class="geores hidden"></div></div>
+    <div class="frow">
+      <div class="field"><label>Date *</label><input type="date" id="e-date" class="inp"></div>
+      <div class="field"><label>Catégorie</label><select id="e-cat" class="inp sel-inp"></select></div>
+    </div>
+    <div class="field"><label>Note</label><textarea id="e-note" class="inp ta" rows="3"></textarea></div>
+    <div class="field"><label>Favori</label><select id="e-fav" class="inp sel-inp"><option value="0">Non</option><option value="1">⭐ Oui</option></select></div>
+    <div class="field"><label>Médias existants</label><div id="e-existing" class="exmed"></div>
+      <div class="uzone" onclick="document.getElementById('e-files').click()">📷 Ajouter
+        <input type="file" id="e-files" accept="image/*,video/*" multiple style="display:none" onchange="MEDIA.preview(this,'e-prev','editmem')"></div>
+      <div id="e-prev" class="mpgrid"></div></div>
+    <div class="sfooter"><button class="btn btn-g" onclick="UI.closeSheet('sh-editmem')">Annuler</button><button class="btn btn-p" onclick="MEM.update()">Sauvegarder ✦</button></div>
+  </div>
+</div>
+<div class="ov hidden" id="sh-addwish" onclick="UI.ovc(event,this)">
+  <div class="sheet"><div class="handle"></div><h3 class="stitle">🗺️ Wishlist</h3>
+    <div id="aw-badge" class="pbadge hidden">📍 Position sélectionnée</div>
+    <div class="field"><label>Nom *</label><input type="text" id="w-title" class="inp" placeholder="ex : Tokyo"></div>
+    <div class="field"><label>Ville / Pays</label>
+      <div class="geobox"><input type="text" id="w-addr" class="inp" oninput="GEO.live(this.value,'w-addr','w-gr','addwish')" autocomplete="off">
+        <button class="geobtn" onclick="GEO.fill('w-addr','aw-badge',null)">📍</button></div>
+      <div id="w-gr" class="geores hidden"></div></div>
+    <div class="field"><label>Catégorie</label><select id="w-cat" class="inp sel-inp"></select></div>
+    <div class="field"><label>Note</label><textarea id="w-note" class="inp ta" rows="2"></textarea></div>
+    <div class="sfooter"><button class="btn btn-g" onclick="UI.closeSheet('sh-addwish')">Annuler</button><button class="btn btn-p" onclick="WISH.save()">Ajouter ✦</button></div>
+  </div>
+</div>
+<div class="ov hidden" id="sh-cat" onclick="UI.ovc(event,this)">
+  <div class="sheet"><div class="handle"></div><h3 class="stitle" id="cat-stitle">✦ Catégorie</h3>
+    <input type="hidden" id="cat-id"><input type="hidden" id="cat-type">
+    <div class="field"><label>Nom *</label><input type="text" id="cat-name" class="inp"></div>
+    <div class="frow">
+      <div class="field"><label>Icône *</label><input type="text" id="cat-icon" class="inp" maxlength="4"></div>
+      <div class="field"><label>Couleur</label><input type="color" id="cat-color" class="inp" style="padding:4px 6px;height:44px;cursor:pointer" value="#C9A96E"></div>
+    </div>
+    <div class="field" id="cat-anim-f"><label>Animation</label><select id="cat-anim" class="inp sel-inp"><option value="pulse">Pulsation</option><option value="bounce">Rebond</option><option value="glow">Halo</option><option value="none">Aucune</option></select></div>
+    <div class="sfooter"><button class="btn btn-g" onclick="UI.closeSheet('sh-cat')">Annuler</button><button class="btn btn-p" onclick="CAT.save()">Créer ✦</button></div>
+  </div>
+</div>
+<div class="content" id="content">
+  <div class="ph">
+    <div><h2 class="pt">Nos Souvenirs</h2><p class="ps" id="list-lbl"></p></div>
+    <button class="btn btn-p btn-sm" onclick="UI.openSheet('sh-addmem')">+ Ajouter</button>
+  </div>
+  <div class="fbar" id="list-fbar"></div>
+  <div class="sortrow"><span>Trier :</span>
+    <select class="sortsel" id="sort-sel" onchange="LIST.render()">
+      <option value="recent">Plus récent</option>
+      <option value="old">Plus ancien</option>
+      <option value="alpha">A → Z</option>
+      <option value="fav">Favoris</option>
+    </select>
+  </div>
+  <div class="masonry" id="masonry"></div>
+</div>
+
+<script src="core.js?v=1773764775"></script>
+<script>
+var APP={_pos:null,_cw:null,_epos:null};
+
+var MEM={
+  save:function(){
+    if(!UI.validate(['a-title','a-date']))return;
+    var catId=document.getElementById('a-cat').value;
+    if(!catId){UI.toast('Selectionne une categorie','er');return;}
+    var pos=APP._pos||{lat:null,lng:null};APP._pos=null;
+    var id=uid(),files=MEDIA.get('addmem');
+    IDB.save(id,files,function(refs){
+      var m={id:id,title:UI.get('a-title'),address:UI.get('a-addr'),lat:pos.lat,lng:pos.lng,
+             date:UI.get('a-date'),catId:catId,note:UI.get('a-note'),
+             fav:document.getElementById('a-fav').value==='1',photoRefs:refs,photos:[]};
+      S.memories.push(m);STG.save();MEDIA.clear('addmem');
+      DB.upsert('memories',{id:m.id,title:m.title,address:m.address||null,lat:m.lat||null,
+        lng:m.lng||null,date:m.date,cat_id:m.catId,note:m.note||null,fav:m.fav,
+        photo_refs:m.photoRefs||[],created_by:'winnie'},null);
+      UI.closeSheet('sh-addmem');LIST.render();
+      UI.toast('Souvenir ajouté'+(refs.length?' ('+refs.length+' média)':'')+'!','ok');
+      if(APP._cw){S.wishlist=S.wishlist.filter(function(w){return w.id!==APP._cw});APP._cw=null;STG.save();}
+    });
+  },
+  detail:function(id){
+    UI.revoke();
+    var m=S.memories.find(function(x){return x.id===id});if(!m)return;
+    var cat=S.categories.find(function(c){return c.id===m.catId});
+    var old=document.getElementById('fs-detail');if(old)old.remove();
+    var fs=document.createElement('div');fs.id='fs-detail';fs.className='fs';
+    var hero=document.createElement('div');hero.className='fs-hero';
+    var col=cat?cat.color:'var(--acc)';
+    // Topbar
+    var tb=document.createElement('div');tb.className='fs-topbar';
+    var back=document.createElement('button');back.className='fs-back';back.textContent='←';
+    back.onclick=function(){MEM.closeDetail()};
+    var fav=document.createElement('button');fav.className='fs-fav';
+    fav.textContent=m.fav?'⭐ Favori':'Favori';
+    fav.onclick=function(){m.fav=!m.fav;STG.save();fav.textContent=m.fav?'⭐ Favori':'Favori';LIST.render();};
+    tb.appendChild(back);tb.appendChild(fav);hero.appendChild(tb);
+    // Hero pattern
+    var pat=document.createElement('div');pat.className='fs-hero-pat';
+    pat.style.background=col+'18';pat.textContent=cat?cat.icon:'📍';
+    hero.appendChild(pat);
+    var grad=document.createElement('div');grad.className='fs-hero-grad';hero.appendChild(grad);
+    fs.appendChild(hero);
+    // Scroll content
+    var sc=document.createElement('div');sc.className='fs-scroll';
+    var title=document.createElement('h1');title.className='fs-title';title.textContent=m.title;sc.appendChild(title);
+    var chips=document.createElement('div');chips.className='fs-chips';
+    [{l:fmtDate(m.date)},
+     cat?{l:cat.icon+' '+cat.name,s:'background:'+col+'22;color:'+col+';border-color:'+col+'44'}:null,
+     m.address?{l:m.address}:null
+    ].filter(Boolean).forEach(function(ch){
+      var sp=document.createElement('span');sp.className='chip';sp.textContent=ch.l;
+      if(ch.s)sp.setAttribute('style',ch.s);chips.appendChild(sp);
+    });
+    sc.appendChild(chips);
+    if(m.note){var note=document.createElement('div');note.className='fs-note';note.textContent=m.note;sc.appendChild(note);}
+    var acts=document.createElement('div');acts.className='fs-acts';
+    var eb=document.createElement('button');eb.className='btn btn-g';eb.textContent='Modifier';
+    eb.onclick=function(){MEM.closeDetail();setTimeout(function(){MEM.edit(id)},200);};
+    acts.appendChild(eb);
+    var db=document.createElement('button');db.className='btn btn-d';db.textContent='Supprimer';
+    db.onclick=function(){MEM.remove(id);};acts.appendChild(db);
+    sc.appendChild(acts);fs.appendChild(sc);
+    document.body.appendChild(fs);
+    // Swipe down to close
+    var sy=0;
+    fs.addEventListener('touchstart',function(e){sy=e.touches[0].clientY;},{passive:true});
+    fs.addEventListener('touchend',function(e){if(e.changedTouches[0].clientY-sy>80&&sc.scrollTop===0)MEM.closeDetail();},{passive:true});
+    // Charger médias
+    if(m.photoRefs&&m.photoRefs.length){
+      IDB.forMem(id,function(meds){
+        var imgs=meds.filter(function(x){return x.type&&x.type.startsWith('image/')});
+        var vids=meds.filter(function(x){return x.type&&x.type.startsWith('video/')});
+        if(vids.length>0){
+          // Vidéo dans le hero, autoplay muted loop
+          var vid=document.createElement('video');
+          vid.style.cssText='width:100%;height:100%;object-fit:cover;position:absolute;inset:0';
+          vid.src=URL.createObjectURL(vids[0].data);
+          vid.autoplay=true;vid.muted=true;vid.loop=true;
+          vid.setAttribute('playsinline','');vid.setAttribute('webkit-playsinline','');
+          pat.style.display='none';
+          var ei=hero.querySelector('img');if(ei)ei.remove();
+          hero.insertBefore(vid,grad);
+          // Bouton mute
+          var mb=document.createElement('button');
+          mb.style.cssText='position:absolute;bottom:14px;right:14px;z-index:20;width:38px;height:38px;border-radius:50%;background:rgba(0,0,0,.6);border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;';
+          mb.textContent='🔇';
+          mb.onclick=function(e){e.stopPropagation();vid.muted=!vid.muted;mb.textContent=vid.muted?'🔇':'🔊';};
+          hero.appendChild(mb);
+          fs._stopVid=function(){try{vid.pause();vid.src='';}catch(e){}};
+        } else if(imgs.length>0){
+          var hi=document.createElement('img');
+          hi.src=URL.createObjectURL(imgs[0].data);
+          hi.style.cssText='width:100%;height:100%;object-fit:cover;position:absolute;inset:0';
+          hi.onclick=function(){LB.open(imgs,0);};
+          pat.style.display='none';hero.insertBefore(hi,grad);
+          if(imgs.length>1){
+            var strip=document.createElement('div');strip.className='fs-strip';
+            sc.insertBefore(strip,title.nextSibling);
+            imgs.forEach(function(med,i){
+              var th=document.createElement('img');th.className='fs-thumb'+(i===0?' sel':'');
+              th.src=URL.createObjectURL(med.data);
+              th.onclick=function(){hi.src=URL.createObjectURL(med.data);strip.querySelectorAll('.fs-thumb').forEach(function(t){t.classList.remove('sel')});th.classList.add('sel');};
+              strip.appendChild(th);
+            });
+          }
+        }
+      });
+    }
+  },
+  closeDetail:function(){
+    var fs=document.getElementById('fs-detail');if(!fs)return;
+    if(fs._stopVid)fs._stopVid();
+    fs.classList.add('out');setTimeout(function(){if(fs.parentNode)fs.parentNode.removeChild(fs);},320);
+  },
+  edit:function(id){
+    var m=S.memories.find(function(x){return x.id===id});if(!m)return;
+    UI.val('e-id',m.id);UI.val('e-title',m.title);UI.val('e-addr',m.address||'');
+    UI.val('e-date',m.date);UI.val('e-note',m.note||'');
+    document.getElementById('e-fav').value=m.fav?'1':'0';
+    var cats=S.categories.filter(function(c){return c.type==='souvenir'});
+    UI.sel('e-cat',cats.map(function(c){return{v:c.id,l:c.icon+' '+c.name};}),m.catId);
+    document.getElementById('e-prev').innerHTML='';
+    document.getElementById('e-files').value='';
+    MEDIA.clear('editmem');APP._epos=null;
+    var ex=document.getElementById('e-existing');ex.innerHTML='';
+    if(m.photoRefs&&m.photoRefs.length){
+      m.photoRefs.forEach(function(ref){
+        var ch=document.createElement('span');ch.className='exchip';
+        ch.innerHTML=(ref.type&&ref.type.startsWith('video/'))?'Vidéo: '+esc(ref.name||ref.id):'Photo: '+esc(ref.name||ref.id);
+        var del=document.createElement('button');del.className='exdel';del.textContent='x';
+        del.onclick=function(){IDB.delOne(ref.id,function(){var mi=S.memories.find(function(x){return x.id===id});if(mi)mi.photoRefs=mi.photoRefs.filter(function(r){return r.id!==ref.id});STG.save();MEM.edit(id);UI.toast('Média supprimé','');});};
+        ch.appendChild(del);ex.appendChild(ch);
+      });
+    }
+    setTimeout(function(){UI.openSheet('sh-editmem');},200);
+  },
+  update:function(){
+    if(!UI.validate(['e-title','e-date']))return;
+    var id=UI.get('e-id'),idx=S.memories.findIndex(function(m){return m.id===id;});
+    if(idx<0)return;
+    var files=MEDIA.get('editmem'),pos=APP._epos;
+    function done(refs){
+      var m=S.memories[idx];
+      S.memories[idx]=Object.assign({},m,{
+        title:UI.get('e-title'),address:UI.get('e-addr'),date:UI.get('e-date'),
+        catId:document.getElementById('e-cat').value,note:UI.get('e-note'),
+        fav:document.getElementById('e-fav').value==='1',
+        lat:pos?pos.lat:m.lat,lng:pos?pos.lng:m.lng,
+        photoRefs:(m.photoRefs||[]).concat(refs)
+      });
+      STG.save();MEDIA.clear('editmem');UI.closeSheet('sh-editmem');LIST.render();
+      UI.toast('Souvenir modifié !','ok');
+    }
+    if(files.length)IDB.save(id,files,function(refs){done(refs);});else done([]);
+  },
+  remove:function(id){
+    UI.confirm('Supprimer ce souvenir ?','Photos et vidéos supprimées.',function(){
+      IDB.delMem(id,function(){
+        S.memories=S.memories.filter(function(m){return m.id!==id;});
+        STG.save();DB.del('memories',id,null);UI.revoke();MEM.closeDetail();LIST.render();
+        UI.toast('Supprimé','');
+      });
+    });
+  }
+};
+
+var WISH={
+  save:function(){
+    if(!UI.validate(['w-title']))return;
+    var pos=APP._pos||{lat:null,lng:null};APP._pos=null;
+    var w={id:uid(),title:UI.get('w-title'),address:UI.get('w-addr'),lat:pos.lat,lng:pos.lng,
+           catId:document.getElementById('w-cat').value,note:UI.get('w-note')};
+    S.wishlist.push(w);STG.save();
+    DB.upsert('wishlist',{id:w.id,title:w.title,address:w.address||null,lat:w.lat||null,
+      lng:w.lng||null,cat_id:w.catId,note:w.note||null,created_by:'winnie'},null);
+    UI.closeSheet('sh-addwish');UI.toast('Ajouté à la wishlist !','ok');
+  }
+};
+
+var H=[160,130,190,145,175,125,165,200,140,155];
+var P=[
+  function(c,i){return '<svg viewBox="0 0 100 100"><defs><pattern id="p'+i+'" width="15" height="15" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.2" fill="'+c+'" opacity="0.4"/></pattern></defs><rect width="100" height="100" fill="url(#p'+i+')"/></svg>';},
+  function(c,i){return '<svg viewBox="0 0 100 100"><defs><pattern id="p'+i+'" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M10 2L11.5 8.5L18 10L11.5 11.5L10 18L8.5 11.5L2 10L8.5 8.5Z" fill="'+c+'" opacity="0.3"/></pattern></defs><rect width="100" height="100" fill="url(#p'+i+')"/></svg>';},
+  function(c,i){return '<svg viewBox="0 0 100 100"><defs><pattern id="p'+i+'" width="25" height="25" patternUnits="userSpaceOnUse"><rect x="1" y="1" width="10" height="10" rx="2" fill="none" stroke="'+c+'" stroke-width="0.6" opacity="0.4"/></pattern></defs><rect width="100" height="100" fill="url(#p'+i+')"/></svg>';}
+];
+
+var _f='all',_tc={};
+var LIST={
+  render:function(){
+    var fb=document.getElementById('list-fbar');fb.innerHTML='';
+    var cats=S.categories.filter(function(c){return c.type==='souvenir';});
+    [{id:'all',l:'Tous'},{id:'fav',l:'Favoris'}].concat(cats.map(function(c){return{id:c.id,l:c.icon+' '+c.name};}))
+    .forEach(function(f){
+      var b=document.createElement('button');b.className='chip'+(_f===f.id?' on':'');
+      b.textContent=f.l;b.onclick=function(){_f=f.id;LIST.render();};fb.appendChild(b);
+    });
+    var sort=document.getElementById('sort-sel').value;
+    var mems=S.memories.slice();
+    if(_f==='fav')mems=mems.filter(function(m){return m.fav;});
+    else if(_f!=='all')mems=mems.filter(function(m){return m.catId===_f;});
+    if(sort==='recent')mems.sort(function(a,b){return b.date.localeCompare(a.date);});
+    else if(sort==='old')mems.sort(function(a,b){return a.date.localeCompare(b.date);});
+    else if(sort==='alpha')mems.sort(function(a,b){return a.title.localeCompare(b.title);});
+    else if(sort==='fav')mems.sort(function(a,b){return(b.fav?1:0)-(a.fav?1:0);});
+    var lbl=document.getElementById('list-lbl');
+    if(lbl)lbl.textContent=S.memories.length+' moment'+(S.memories.length>1?'s':'')+' précieux';
+    var grid=document.getElementById('masonry');grid.innerHTML='';
+    if(!mems.length){grid.innerHTML='<div class="empty"><div class="emico">💭</div><div class="emtxt">Aucun souvenir.</div></div>';return;}
+    mems.forEach(function(m,i){
+      var cat=S.categories.find(function(c){return c.id===m.catId;}),col=cat?cat.color:'#C9A96E',h=H[i%H.length];
+      var first=m.photoRefs&&m.photoRefs.find(function(r){return r.type&&(r.type.startsWith('image/')||r.type.startsWith('video/'));});
+      var card=document.createElement('div');card.className='mcard';
+      card.innerHTML='<div class="mcpat" style="height:'+h+'px;background:'+col+'18">'+P[i%P.length](col,i)+
+        '<div class="mcover"></div>'+(m.fav?'<div class="mcfav">⭐</div>':'')+
+        '<div class="mccat" style="background:'+col+'30;color:'+col+';border:1px solid '+col+'50">'+(cat?cat.icon+' '+cat.name:'')+
+        '</div><div class="mcbody"><div class="mctitle">'+esc(m.title)+'</div><div class="mcdate">'+fmtDate(m.date)+'</div></div></div>';
+      card.onclick=function(){MEM.detail(m.id);};
+      grid.appendChild(card);
+      if(first){
+        var mid=first.id;
+        if(_tc[mid]){LIST._inj(card,_tc[mid],h,col,m,cat,first.type.startsWith('video/'));}
+        else IDB.one(mid,function(rec){
+          if(!rec||!rec.data)return;
+          if(rec.type&&rec.type.startsWith('video/')){
+            LIST._vth(rec.data,function(u){if(u){_tc[mid]=u;LIST._inj(card,u,h,col,m,cat,true);}});
+          }else{var u=URL.createObjectURL(rec.data);_tc[mid]=u;LIST._inj(card,u,h,col,m,cat,false);}
+        });
+      }
+    });
+  },
+  _vth:function(blob,cb){
+    var u=URL.createObjectURL(blob);var v=document.createElement('video');
+    v.muted=true;v.playsInline=true;v.src=u;v.currentTime=0.5;
+    v.onseeked=function(){try{var c=document.createElement('canvas');c.width=v.videoWidth||320;c.height=v.videoHeight||240;c.getContext('2d').drawImage(v,0,0,c.width,c.height);URL.revokeObjectURL(u);cb(c.toDataURL('image/jpeg',.8));}catch(e){URL.revokeObjectURL(u);cb(null);}};
+    v.onerror=function(){URL.revokeObjectURL(u);cb(null);};v.load();
+  },
+  _inj:function(card,url,h,col,m,cat,isVid){
+    var p=card.querySelector('.mcpat');if(!p)return;
+    p.innerHTML='<img src="'+url+'" style="width:100%;height:'+h+'px;object-fit:cover;display:block" alt="'+esc(m.title)+'">'+
+      (isVid?'<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-60%);width:36px;height:36px;background:rgba(0,0,0,.55);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px">▶️</div>':'')+
+      '<div class="mcover"></div>'+(m.fav?'<div class="mcfav">⭐</div>':'')+
+      '<div class="mccat" style="background:'+col+'30;color:'+col+';border:1px solid '+col+'50">'+(cat?cat.icon+' '+cat.name:'')+
+      '</div><div class="mcbody"><div class="mctitle">'+esc(m.title)+'</div><div class="mcdate">'+fmtDate(m.date)+'</div></div>';
+  }
+};
+
+document.addEventListener('DOMContentLoaded',function(){
+  initCommon(function(){NAV.cur='list';LIST.render();});
+});
+</script>
+</body>
+</html>

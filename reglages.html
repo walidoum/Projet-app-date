@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Winnie et Vvs">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0D0D0D">
+<title>Réglages — Winnie & Vvs</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garant:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=1773764775">
+
+<script>try{var _t=JSON.parse(localStorage.getItem('wv_app')||'{}');if(_t.config&&_t.config.theme)document.body.setAttribute('data-theme',_t.config.theme)}catch(e){}</script>
+</head>
+<body>
+<nav class="bnav" id="bnav">
+  <button class="nb" data-p="list" onclick="NAV.go('list')"><span class="ni">📋</span><span>Liste</span></button>
+  <button class="nb" data-p="stats" onclick="NAV.go('stats')"><span class="ni">📊</span><span>Stats</span></button>
+  <button class="nb" data-p="map" onclick="NAV.go('map')"><span class="ni">🗺️</span><span>Carte</span></button>
+  <button class="nb" data-p="journal" onclick="NAV.go('journal')"><span class="ni">📖</span><span>Journal</span></button>
+  <button class="nb" data-p="settings" onclick="NAV.go('settings')"><span class="ni">⚙️</span><span>Réglages</span></button>
+</nav>
+
+<div id="toast"></div>
+<canvas id="cc" style="position:fixed;inset:0;z-index:1799;pointer-events:none"></canvas>
+<div id="cov" class="hidden" onclick="if(event.target===this)CN.no()">
+  <div class="cbox"><h3 id="c-title" class="ctitle"></h3><p id="c-msg" class="cmsg"></p>
+    <div class="cbtns"><button class="btn btn-g" onclick="CN.no()">Annuler</button><button class="btn btn-d" onclick="CN.yes()">Supprimer</button></div>
+  </div>
+</div>
+<div id="lb" class="hidden" onclick="LB.close()">
+  <button class="lbclose" onclick="LB.close()">✕</button>
+  <button class="lbprev" onclick="event.stopPropagation();LB.prev()">‹</button>
+  <button class="lbnext" onclick="event.stopPropagation();LB.next()">›</button>
+  <img id="lb-img" src="" alt="" onclick="event.stopPropagation()">
+</div>
+
+<div class="ov hidden" id="sh-addmem" onclick="UI.ovc(event,this)">
+  <div class="sheet"><div class="handle"></div><h3 class="stitle">✦ Nouveau souvenir</h3>
+    <div id="am-badge" class="pbadge hidden">📍 Position sélectionnée</div>
+    <div class="field"><label>Nom *</label><input type="text" id="a-title" class="inp" placeholder="ex : Le Petit Châtelet"></div>
+    <div class="field"><label>Adresse</label>
+      <div class="geobox"><input type="text" id="a-addr" class="inp" placeholder="ex : Paris, France" oninput="GEO.live(this.value,'a-addr','a-gr','addmem')" autocomplete="off">
+        <button class="geobtn geobtn-p" onclick="GEO.fill('a-addr','am-badge','a-title')">Loc.</button></div>
+      <div id="a-gr" class="geores hidden"></div></div>
+    <div class="frow">
+      <div class="field"><label>Date *</label><input type="date" id="a-date" class="inp"></div>
+      <div class="field"><label>Catégorie *</label><select id="a-cat" class="inp sel-inp"></select></div>
+    </div>
+    <div class="field"><label>Note</label><textarea id="a-note" class="inp ta" rows="3"></textarea></div>
+    <div class="field"><label>Photos &amp; Vidéos</label>
+      <div class="uzone" onclick="document.getElementById('a-files').click()">📷 Appuyer pour ajouter
+        <input type="file" id="a-files" accept="image/*,video/*" multiple style="display:none" onchange="MEDIA.preview(this,'a-prev','addmem')"></div>
+      <div id="a-prev" class="mpgrid"></div></div>
+    <div class="field"><label>Favori</label><select id="a-fav" class="inp sel-inp"><option value="0">Non</option><option value="1">⭐ Oui</option></select></div>
+    <div class="sfooter"><button class="btn btn-g" onclick="UI.closeSheet('sh-addmem')">Annuler</button><button class="btn btn-p" onclick="MEM.save()">Enregistrer ✦</button></div>
+  </div>
+</div>
+<div class="ov hidden" id="sh-editmem" onclick="UI.ovc(event,this)">
+  <div class="sheet"><div class="handle"></div><h3 class="stitle">✏️ Modifier</h3>
+    <input type="hidden" id="e-id">
+    <div class="field"><label>Nom *</label><input type="text" id="e-title" class="inp"></div>
+    <div class="field"><label>Adresse</label>
+      <div class="geobox"><input type="text" id="e-addr" class="inp" oninput="GEO.live(this.value,'e-addr','e-gr','editmem')" autocomplete="off">
+        <button class="geobtn" onclick="GEO.fill('e-addr',null,null)">📍</button></div>
+      <div id="e-gr" class="geores hidden"></div></div>
+    <div class="frow">
+      <div class="field"><label>Date *</label><input type="date" id="e-date" class="inp"></div>
+      <div class="field"><label>Catégorie</label><select id="e-cat" class="inp sel-inp"></select></div>
+    </div>
+    <div class="field"><label>Note</label><textarea id="e-note" class="inp ta" rows="3"></textarea></div>
+    <div class="field"><label>Favori</label><select id="e-fav" class="inp sel-inp"><option value="0">Non</option><option value="1">⭐ Oui</option></select></div>
+    <div class="field"><label>Médias existants</label><div id="e-existing" class="exmed"></div>
+      <div class="uzone" onclick="document.getElementById('e-files').click()">📷 Ajouter
+        <input type="file" id="e-files" accept="image/*,video/*" multiple style="display:none" onchange="MEDIA.preview(this,'e-prev','editmem')"></div>
+      <div id="e-prev" class="mpgrid"></div></div>
+    <div class="sfooter"><button class="btn btn-g" onclick="UI.closeSheet('sh-editmem')">Annuler</button><button class="btn btn-p" onclick="MEM.update()">Sauvegarder ✦</button></div>
+  </div>
+</div>
+<div class="ov hidden" id="sh-addwish" onclick="UI.ovc(event,this)">
+  <div class="sheet"><div class="handle"></div><h3 class="stitle">🗺️ Wishlist</h3>
+    <div id="aw-badge" class="pbadge hidden">📍 Position sélectionnée</div>
+    <div class="field"><label>Nom *</label><input type="text" id="w-title" class="inp" placeholder="ex : Tokyo"></div>
+    <div class="field"><label>Ville / Pays</label>
+      <div class="geobox"><input type="text" id="w-addr" class="inp" oninput="GEO.live(this.value,'w-addr','w-gr','addwish')" autocomplete="off">
+        <button class="geobtn" onclick="GEO.fill('w-addr','aw-badge',null)">📍</button></div>
+      <div id="w-gr" class="geores hidden"></div></div>
+    <div class="field"><label>Catégorie</label><select id="w-cat" class="inp sel-inp"></select></div>
+    <div class="field"><label>Note</label><textarea id="w-note" class="inp ta" rows="2"></textarea></div>
+    <div class="sfooter"><button class="btn btn-g" onclick="UI.closeSheet('sh-addwish')">Annuler</button><button class="btn btn-p" onclick="WISH.save()">Ajouter ✦</button></div>
+  </div>
+</div>
+<div class="ov hidden" id="sh-cat" onclick="UI.ovc(event,this)">
+  <div class="sheet"><div class="handle"></div><h3 class="stitle" id="cat-stitle">✦ Catégorie</h3>
+    <input type="hidden" id="cat-id"><input type="hidden" id="cat-type">
+    <div class="field"><label>Nom *</label><input type="text" id="cat-name" class="inp"></div>
+    <div class="frow">
+      <div class="field"><label>Icône *</label><input type="text" id="cat-icon" class="inp" maxlength="4"></div>
+      <div class="field"><label>Couleur</label><input type="color" id="cat-color" class="inp" style="padding:4px 6px;height:44px;cursor:pointer" value="#C9A96E"></div>
+    </div>
+    <div class="field" id="cat-anim-f"><label>Animation</label><select id="cat-anim" class="inp sel-inp"><option value="pulse">Pulsation</option><option value="bounce">Rebond</option><option value="glow">Halo</option><option value="none">Aucune</option></select></div>
+    <div class="sfooter"><button class="btn btn-g" onclick="UI.closeSheet('sh-cat')">Annuler</button><button class="btn btn-p" onclick="CAT.save()">Créer ✦</button></div>
+  </div>
+</div>
+
+<div class="ov hidden" id="sh-splash" onclick="UI.ovc(event,this)">
+  <div class="sheet"><div class="handle"></div><h3 class="stitle">🏠 Page d'accueil</h3>
+    <div class="field"><label>Titre</label><input type="text" id="cfg-title" class="inp" placeholder="Winnie et Vvs"></div>
+    <div class="field"><label>Date de début</label><input type="date" id="cfg-date" class="inp"></div>
+    <div class="field"><label>Phrase romantique</label><textarea id="cfg-phrase" class="inp ta" rows="2"></textarea></div>
+    <div class="sfooter"><button class="btn btn-g" onclick="UI.closeSheet('sh-splash')">Annuler</button><button class="btn btn-p" onclick="SETTINGS.saveSplash()">Sauvegarder ✦</button></div>
+  </div>
+</div>
+<div class="ov hidden" id="sh-sdate" onclick="UI.ovc(event,this)">
+  <div class="sheet"><div class="handle"></div><h3 class="stitle">🎊 Date spéciale</h3>
+    <div class="field"><label>Nom *</label><input type="text" id="sd-name" class="inp"></div>
+    <div class="frow">
+      <div class="field"><label>Jour</label><input type="number" id="sd-day" class="inp" min="1" max="31"></div>
+      <div class="field"><label>Mois</label><select id="sd-month" class="inp sel-inp">
+        <option value="1">Janvier</option><option value="2">Février</option><option value="3">Mars</option>
+        <option value="4">Avril</option><option value="5">Mai</option><option value="6">Juin</option>
+        <option value="7">Juillet</option><option value="8">Août</option><option value="9" selected>Septembre</option>
+        <option value="10">Octobre</option><option value="11">Novembre</option><option value="12">Décembre</option>
+      </select></div>
+    </div>
+    <div class="field"><label>Message</label><input type="text" id="sd-msg" class="inp"></div>
+    <div class="field"><label>Emojis confettis</label><input type="text" id="sd-emojis" class="inp" value="❤️ ✨ 💕"></div>
+    <div class="sfooter"><button class="btn btn-g" onclick="UI.closeSheet('sh-sdate')">Annuler</button><button class="btn btn-p" onclick="SETTINGS.saveSDate()">Créer ✦</button></div>
+  </div>
+</div>
+<div class="ov hidden" id="sh-customtheme" onclick="UI.ovc(event,this)">
+  <div class="sheet"><div class="handle"></div><h3 class="stitle">🎨 Thème perso</h3>
+    <div class="frow"><div class="field"><label>Fond</label><input type="color" id="ct-bg" class="inp" style="padding:4px 6px;height:44px;cursor:pointer" value="#0D0D0D"></div><div class="field"><label>Surface</label><input type="color" id="ct-sur" class="inp" style="padding:4px 6px;height:44px;cursor:pointer" value="#1A1A2E"></div></div>
+    <div class="frow"><div class="field"><label>Accent</label><input type="color" id="ct-acc" class="inp" style="padding:4px 6px;height:44px;cursor:pointer" value="#C9A96E"></div><div class="field"><label>Accent 2</label><input type="color" id="ct-acc2" class="inp" style="padding:4px 6px;height:44px;cursor:pointer" value="#E8C4C4"></div></div>
+    <div class="frow"><div class="field"><label>Texte</label><input type="color" id="ct-tx" class="inp" style="padding:4px 6px;height:44px;cursor:pointer" value="#F5F0EB"></div><div class="field"><label>Texte 2</label><input type="color" id="ct-tx2" class="inp" style="padding:4px 6px;height:44px;cursor:pointer" value="#9B8EA0"></div></div>
+    <div class="frow"><div class="field"><label>Bordures</label><input type="color" id="ct-bd" class="inp" style="padding:4px 6px;height:44px;cursor:pointer" value="#2D2D4E"></div><div class="field"><label>Fond carte</label><input type="color" id="ct-mapbg" class="inp" style="padding:4px 6px;height:44px;cursor:pointer" value="#08080e"></div></div>
+    <div class="sfooter"><button class="btn btn-g" onclick="UI.closeSheet('sh-customtheme')">Annuler</button><button class="btn btn-p" onclick="THEMES.applyCustom()">Appliquer ✦</button></div>
+  </div>
+</div>
+<div class="content">
+  <div class="ph"><div><h2 class="pt">Réglages</h2></div></div>
+  <div style="padding:16px" id="settings-body"></div>
+</div>
+
+<script src="core.js?v=1773764775"></script>
+<script>
+var SETTINGS={
+  render:function(){
+    var el=document.getElementById('settings-body');el.innerHTML='';
+    function mkh(tag,cls,html){var e=document.createElement(tag);if(cls)e.className=cls;if(html)e.innerHTML=html;return e;}
+    function sec(t){return mkh('div','','<div class="sshd2">'+t+'</div>');}
+    // Themes
+    el.appendChild(sec('Themes'));
+    var tg=mkh('div','tgrid');
+    [{id:'romantique',name:'Romantique',p:'linear-gradient(135deg,#C9A96E,#E8C4C4)'},
+     {id:'minimaliste',name:'Minimal',p:'linear-gradient(135deg,#1c1c1c,#888)'},
+     {id:'mystique',name:'Mystique',p:'linear-gradient(135deg,#1a0a3e,#b08be8)'},
+     {id:'nature',name:'Nature',p:'linear-gradient(135deg,#0f1e12,#6fbf7a)'},
+     {id:'automne',name:'Automne',p:'linear-gradient(135deg,#1e1208,#d4843a)'},
+     {id:'clair',name:'Clair',p:'linear-gradient(135deg,#f5f0eb,#9a6e3a)'},
+     {id:'ocean',name:'Ocean',p:'linear-gradient(135deg,#040d18,#38b2dc)'},
+     {id:'rosegold',name:'Rose Gold',p:'linear-gradient(135deg,#1a0f0f,#e88c8c)'},
+     {id:'custom',name:'Perso',p:'linear-gradient(135deg,var(--acc),var(--acc2))'}
+    ].forEach(function(t){
+      var d=mkh('div','tcard'+(S.config.theme===t.id?' on':''));d.dataset.t=t.id;
+      d.innerHTML='<div class="tprev" style="background:'+t.p+'"></div><div class="tname">'+t.name+'</div>';
+      d.onclick=t.id==='custom'?function(){UI.openSheet('sh-customtheme');}:(function(tid){return function(){THEMES.apply(tid);};})(t.id);
+      tg.appendChild(d);
+    });
+    el.appendChild(tg);
+    // Cats souvenirs
+    el.appendChild(sec('Catégories Souvenirs'));
+    el.appendChild(mkh('div','','<div id="s-cats"></div>'));
+    var bn=mkh('button','btn btn-g btn-full');bn.style.marginTop='4px';bn.textContent='+ Nouvelle catégorie';bn.onclick=function(){CAT.newCat('souvenir');};el.appendChild(bn);
+    // Cats wishlist
+    el.appendChild(sec('Catégories Wishlist'));
+    el.appendChild(mkh('div','','<div id="s-wcats"></div>'));
+    var bw=mkh('button','btn btn-g btn-full');bw.style.marginTop='4px';bw.textContent='+ Catégorie wishlist';bw.onclick=function(){CAT.newCat('wishlist');};el.appendChild(bw);
+    // Accueil
+    el.appendChild(sec("Page d'accueil"));
+    var si=mkh('div','sitem');si.innerHTML='<div><div class="slbl">Titre et phrase</div><div class="ssub">'+esc(S.config.title)+' · depuis '+fmtDate(S.config.startDate)+'</div></div>';
+    si.onclick=function(){UI.val('cfg-title',S.config.title);UI.val('cfg-date',S.config.startDate);UI.val('cfg-phrase',S.config.phrase||'');UI.openSheet('sh-splash');};el.appendChild(si);
+    // Dates spéciales
+    el.appendChild(sec('Dates spéciales'));
+    el.appendChild(mkh('div','','<div id="s-sdates"></div>'));
+    var bds=mkh('button','btn btn-g btn-full');bds.style.marginTop='4px';bds.textContent='+ Date spéciale';bds.onclick=function(){UI.openSheet('sh-sdate');};el.appendChild(bds);
+    // Données
+    el.appendChild(sec('Données'));
+    var exp=mkh('div','sitem','<div class="slbl">Exporter JSON</div>');exp.onclick=function(){STG.exportJSON();};el.appendChild(exp);
+    var imp=mkh('div','sitem','<div class="slbl">Importer sauvegarde</div><input type="file" id="imp-f" accept=".json" style="display:none">');
+    imp.querySelector('.slbl').onclick=function(){document.getElementById('imp-f').click();};
+    imp.querySelector('#imp-f').onchange=function(){STG.importJSON(this.files[0]);};el.appendChild(imp);
+    var rst=mkh('div','sitem','<div class="slbl" style="color:var(--err)">Réinitialiser tout</div>');rst.onclick=function(){SETTINGS.reset();};el.appendChild(rst);
+    // Remplir cats
+    function rcl(cid,arr){var c=document.getElementById(cid);if(!c)return;c.innerHTML='';
+      if(!arr.length){c.innerHTML='<div style="font-size:13px;color:var(--tx2);padding:8px 0">Aucune — créez-en une !</div>';return;}
+      arr.forEach(function(cat){
+        var r=mkh('div','catrow');r.innerHTML='<div class="catdot" style="background:'+cat.color+'"></div><span style="font-size:16px">'+cat.icon+'</span><span class="catnm">'+esc(cat.name)+'</span>';
+        var mb=mkh('button','catact');mb.textContent='Modifier';mb.onclick=(function(id){return function(){CAT.edit(id);};})(cat.id);r.appendChild(mb);
+        var db=mkh('button','catact');db.style.color='var(--err)';db.textContent='Supprimer';db.onclick=(function(id){return function(){CAT.del(id);};})(cat.id);r.appendChild(db);
+        c.appendChild(r);
+      });
+    }
+    rcl('s-cats',S.categories.filter(function(c){return c.type==='souvenir';}));
+    rcl('s-wcats',S.categories.filter(function(c){return c.type==='wishlist';}));
+    var sdEl=document.getElementById('s-sdates');if(sdEl){sdEl.innerHTML='';
+      S.specialDates.forEach(function(s){
+        var r=mkh('div','catrow');r.innerHTML='<span style="font-size:16px">'+((s.emojis||'').split(' ')[0]||'🎊')+'</span><span class="catnm">'+esc(s.name)+' — '+s.day+'/'+s.month+'</span>';
+        var db=mkh('button','catact');db.style.color='var(--err)';db.textContent='Supprimer';db.onclick=(function(id){return function(){SETTINGS.delSD(id);};})(s.id);r.appendChild(db);sdEl.appendChild(r);
+      });
+    }
+  },
+  saveSplash:function(){S.config.title=UI.get('cfg-title')||'Winnie & Vvs';S.config.startDate=UI.get('cfg-date')||'2025-09-15';S.config.phrase=UI.get('cfg-phrase')||'';STG.save();DB.setCfg('app_config',S.config);UI.closeSheet('sh-splash');SETTINGS.render();UI.toast('Mis à jour !','ok');},
+  saveSDate:function(){var name=UI.get('sd-name');if(!name){UI.toast('Nom obligatoire','er');return;}S.specialDates.push({id:uid(),name:name,day:parseInt(UI.get('sd-day')),month:parseInt(document.getElementById('sd-month').value),msg:UI.get('sd-msg'),emojis:UI.get('sd-emojis')||'❤️ ✨ 💕'});STG.save();UI.closeSheet('sh-sdate');SETTINGS.render();UI.toast('Date créée !','ok');},
+  delSD:function(id){S.specialDates=S.specialDates.filter(function(s){return s.id!==id;});STG.save();SETTINGS.render();},
+  reset:function(){UI.confirm('Réinitialiser ?','Toutes vos données seront supprimées.',function(){localStorage.clear();setTimeout(function(){location.reload();},300);});}
+};
+document.addEventListener('DOMContentLoaded',function(){initCommon(function(){NAV.cur='settings';SETTINGS.render();});});
+</script>
+</body>
+</html>
