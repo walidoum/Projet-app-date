@@ -86,7 +86,16 @@ var DB={
   cfg:function(k,cb){fetch(SURL+'/rest/v1/config?key=eq.'+k+'&select=*',{headers:SH}).then(function(r){return r.json()}).then(function(d){cb(d&&d[0]?d[0].value:null)}).catch(function(){cb(null)})},
   setCfg:function(k,v){fetch(SURL+'/rest/v1/config',{method:'POST',headers:Object.assign({},SH,{'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify({key:k,value:v,updated_at:new Date().toISOString()})}).catch(function(){})},
   pull:function(){
-    DB.get('categories',function(rows){if(rows&&rows.length)S.categories=rows.map(function(r){return{id:r.id,name:r.name,icon:r.icon,color:r.color,type:r.type,anim:r.anim||'none'}})});
+    DB.get('categories',function(rows){
+    if(rows&&rows.length){
+      S.categories=rows.map(function(r){return{id:r.id,name:r.name,icon:r.icon,color:r.color,type:r.type,anim:r.anim||'none'}});
+      STG.save();
+      // Re-render les pages qui affichent les catégories
+      if(typeof LIST!=='undefined'&&typeof NAV!=='undefined'&&NAV.cur==='list')LIST.render();
+      if(typeof MAP!=='undefined'&&typeof NAV!=='undefined'&&NAV.cur==='map'){MAP.render();MAP.renderSubs();}
+      if(typeof SETTINGS!=='undefined'&&typeof NAV!=='undefined'&&NAV.cur==='settings')SETTINGS.render();
+    }
+  });
     DB.get('memories',function(rows){
       if(!rows||!rows.length)return;
       rows.forEach(function(r){var m={id:r.id,title:r.title,address:r.address,lat:r.lat,lng:r.lng,date:r.date,catId:r.cat_id,note:r.note,fav:r.fav,photoRefs:r.photo_refs||[],photos:[]};var ex=S.memories.find(function(x){return x.id===m.id});if(!ex)S.memories.push(m);else Object.assign(ex,m)});

@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garant:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="style.css?v=1773764775">
+<link rel="stylesheet" href="style.css?v=1773766705">
 <style>
 #map-container{position:fixed;top:0;left:0;right:0;bottom:calc(58px + env(safe-area-inset-bottom,0px));z-index:1;}
 #map{width:100%;height:100%;background:#08080e}
@@ -145,7 +145,7 @@
 <div id="map-container"><div id="map"></div></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<script src="core.js?v=1773764775"></script>
+<script src="core.js?v=1773766705"></script>
 <script>
 var APP={_pos:null,_cw:null,_epos:null};
 
@@ -234,16 +234,21 @@ var MAP=(function(){
         APP._pos={lat:lat,lng:lng};
         if(navigator.vibrate)navigator.vibrate(50);
         UI.openSheet('sh-addmem');
-        // Remplir adresse APRÈS ouverture
-        fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat='+lat+'&lon='+lng+'&accept-language=fr')
-          .then(function(r){return r.json();})
-          .then(function(d){
-            if(!d||!d.address)return;
-            var addr=fmtAddr(d.address)||shortAddr(d.display_name);
-            var b=document.getElementById('am-badge');if(b){b.textContent=addr;b.classList.remove('hidden');}
-            var ai=document.getElementById('a-addr');if(ai)ai.value=addr;
-            var ti=document.getElementById('a-title');if(ti&&!ti.value.trim()&&d.address)ti.value=(d.address.road||d.address.amenity||addr.split(',')[0]).trim();
-          }).catch(function(){});
+        // Remplir adresse avec délai pour laisser _prefill() terminer
+        setTimeout(function(){
+          fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat='+lat+'&lon='+lng+'&accept-language=fr')
+            .then(function(r){return r.json();})
+            .then(function(d){
+              if(!d||!d.address)return;
+              var addr=fmtAddr(d.address)||shortAddr(d.display_name);
+              var b=document.getElementById('am-badge');
+              if(b){b.textContent=addr;b.classList.remove('hidden');}
+              var ai=document.getElementById('a-addr');if(ai)ai.value=addr;
+              var ti=document.getElementById('a-title');
+              if(ti&&!ti.value.trim()&&d.address)
+                ti.value=(d.address.road||d.address.amenity||addr.split(',')[0]).trim();
+            }).catch(function(){});
+        }, 150);
       },600);
     }
     function _cp(){clearTimeout(_pt);_pt=null;_pl=null;_touchStart=null;}

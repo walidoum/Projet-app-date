@@ -11,7 +11,7 @@
 <title>Liste — Winnie & Vvs</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garant:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=1773764775">
+<link rel="stylesheet" href="style.css?v=1773766705">
 
 <script>try{var _t=JSON.parse(localStorage.getItem('wv_app')||'{}');if(_t.config&&_t.config.theme)document.body.setAttribute('data-theme',_t.config.theme)}catch(e){}</script>
 </head>
@@ -122,7 +122,7 @@
   <div class="masonry" id="masonry"></div>
 </div>
 
-<script src="core.js?v=1773764775"></script>
+<script src="core.js?v=1773766705"></script>
 <script>
 var APP={_pos:null,_cw:null,_epos:null};
 
@@ -198,38 +198,81 @@ var MEM={
       IDB.forMem(id,function(meds){
         var imgs=meds.filter(function(x){return x.type&&x.type.startsWith('image/')});
         var vids=meds.filter(function(x){return x.type&&x.type.startsWith('video/')});
-        if(vids.length>0){
-          // Vidéo dans le hero, autoplay muted loop
-          var vid=document.createElement('video');
-          vid.style.cssText='width:100%;height:100%;object-fit:cover;position:absolute;inset:0';
-          vid.src=URL.createObjectURL(vids[0].data);
-          vid.autoplay=true;vid.muted=true;vid.loop=true;
-          vid.setAttribute('playsinline','');vid.setAttribute('webkit-playsinline','');
-          pat.style.display='none';
-          var ei=hero.querySelector('img');if(ei)ei.remove();
-          hero.insertBefore(vid,grad);
-          // Bouton mute
-          var mb=document.createElement('button');
-          mb.style.cssText='position:absolute;bottom:14px;right:14px;z-index:20;width:38px;height:38px;border-radius:50%;background:rgba(0,0,0,.6);border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;';
-          mb.textContent='🔇';
-          mb.onclick=function(e){e.stopPropagation();vid.muted=!vid.muted;mb.textContent=vid.muted?'🔇':'🔊';};
-          hero.appendChild(mb);
-          fs._stopVid=function(){try{vid.pause();vid.src='';}catch(e){}};
-        } else if(imgs.length>0){
-          var hi=document.createElement('img');
-          hi.src=URL.createObjectURL(imgs[0].data);
-          hi.style.cssText='width:100%;height:100%;object-fit:cover;position:absolute;inset:0';
-          hi.onclick=function(){LB.open(imgs,0);};
-          pat.style.display='none';hero.insertBefore(hi,grad);
-          if(imgs.length>1){
+        // Créer l'élément hero (img ou vidéo)
+        var heroEl=null, currentVid=null;
+
+        function showImg(src){
+          // Arrêter la vidéo si active
+          if(currentVid){currentVid.pause();currentVid.style.display='none';}
+          if(!heroEl||heroEl.tagName!=='IMG'){
+            if(heroEl)heroEl.remove();
+            heroEl=document.createElement('img');
+            heroEl.style.cssText='width:100%;height:100%;object-fit:cover;position:absolute;inset:0;cursor:pointer';
+            heroEl.onclick=function(){LB.open(imgs,0);};
+            pat.style.display='none';hero.insertBefore(heroEl,grad);
+          }
+          heroEl.src=src;
+        }
+
+        function showVid(data){
+          if(!currentVid){
+            currentVid=document.createElement('video');
+            currentVid.style.cssText='width:100%;height:100%;object-fit:cover;position:absolute;inset:0';
+            currentVid.muted=true;currentVid.loop=true;
+            currentVid.setAttribute('playsinline','');currentVid.setAttribute('webkit-playsinline','');
+            pat.style.display='none';hero.insertBefore(currentVid,grad);
+            // Bouton mute (une seule fois)
+            var mb=document.createElement('button');
+            mb.style.cssText='position:absolute;bottom:14px;right:14px;z-index:20;width:38px;height:38px;border-radius:50%;background:rgba(0,0,0,.6);border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;';
+            mb.textContent='🔇';
+            mb.onclick=function(e){e.stopPropagation();currentVid.muted=!currentVid.muted;mb.textContent=currentVid.muted?'🔇':'🔊';};
+            hero.appendChild(mb);
+            fs._stopVid=function(){try{currentVid.pause();currentVid.src='';}catch(e){}};
+          }
+          if(heroEl){heroEl.style.display='none';}
+          currentVid.style.display='block';
+          currentVid.src=URL.createObjectURL(data);
+          currentVid.play().catch(function(){});
+        }
+
+        // Construire le strip de miniatures (photos + vidéos ensemble)
+        var allMedia=[];
+        imgs.forEach(function(m){allMedia.push({type:'img',data:m.data});});
+        vids.forEach(function(m){allMedia.push({type:'vid',data:m.data});});
+
+        if(allMedia.length>0){
+          // Afficher le premier élément dans le hero
+          if(allMedia[0].type==='img'){showImg(URL.createObjectURL(allMedia[0].data));}
+          else{showVid(allMedia[0].data);}
+
+          // Strip si plusieurs médias
+          if(allMedia.length>1){
             var strip=document.createElement('div');strip.className='fs-strip';
             sc.insertBefore(strip,title.nextSibling);
-            imgs.forEach(function(med,i){
-              var th=document.createElement('img');th.className='fs-thumb'+(i===0?' sel':'');
-              th.src=URL.createObjectURL(med.data);
-              th.onclick=function(){hi.src=URL.createObjectURL(med.data);strip.querySelectorAll('.fs-thumb').forEach(function(t){t.classList.remove('sel')});th.classList.add('sel');};
+            allMedia.forEach(function(med,i){
+              var th=document.createElement('div');
+              th.style.cssText='flex-shrink:0;width:90px;height:90px;border-radius:12px;overflow:hidden;cursor:pointer;border:2px solid '+(i===0?'var(--acc)':'transparent')+';position:relative;background:#111;';
+              if(med.type==='img'){
+                var ti=document.createElement('img');
+                ti.src=URL.createObjectURL(med.data);
+                ti.style.cssText='width:100%;height:100%;object-fit:cover;display:block;';
+                th.appendChild(ti);
+              } else {
+                // Miniature vidéo avec icône play
+                th.style.background='#222';
+                th.innerHTML='<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:26px;">▶️</div>';
+              }
+              th.onclick=(function(m2,idx2){return function(){
+                strip.querySelectorAll('div').forEach(function(t){t.style.borderColor='transparent';});
+                th.style.borderColor='var(--acc)';
+                if(m2.type==='img'){showImg(URL.createObjectURL(m2.data));}
+                else{showVid(m2.data);}
+              };})(med,i);
               strip.appendChild(th);
             });
+          } else if(imgs.length>0){
+            // Pas de strip mais click sur hero → lightbox
+            if(heroEl)heroEl.onclick=function(){LB.open(imgs,0);};
           }
         }
       });
