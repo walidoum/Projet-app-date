@@ -30,16 +30,32 @@ body{height:100%;background:var(--bg);color:var(--tx);font-family:'Jost',sans-se
   padding-bottom:0;
 }
 @media(display-mode:standalone){
-  .bnav{padding-bottom:env(safe-area-inset-bottom,0px)}
-  /* Étendre le fond de la navbar jusqu'au bas de l'écran physique */
-  .bnav::after{
-    content:'';
-    position:absolute;
-    bottom:calc(-1 * env(safe-area-inset-bottom,0px));
-    left:0;right:0;
-    height:env(safe-area-inset-bottom,0px);
+  /* iPhone 17 Pro/Max (Dynamic Island) : safe-area-inset-bottom ~34px */
+  .bnav{
+    padding-bottom:max(34px, env(safe-area-inset-bottom, 34px));
     background:var(--bg);
+  }
+  /* Couvre la zone home indicator — même couleur que le fond */
+  body::after{
+    content:'';
+    position:fixed;
+    bottom:0;left:0;right:0;
+    height:max(34px, env(safe-area-inset-bottom, 34px));
+    background:var(--bg);
+    z-index:999;
     pointer-events:none;
+  }
+  /* Contenu scrollable : padding bas ajusté */
+  .content{
+    bottom:calc(58px + max(34px, env(safe-area-inset-bottom, 34px)));
+  }
+  /* Boutons carte remontent aussi */
+  .map-bbtns, .mloc{
+    bottom:calc(68px + max(34px, env(safe-area-inset-bottom, 34px)));
+  }
+  /* Dynamic Island : filtres carte descendent */
+  .map-top{
+    top:max(59px, env(safe-area-inset-top, 59px));
   }
 }
 .nb{
