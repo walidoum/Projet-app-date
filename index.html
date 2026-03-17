@@ -1004,16 +1004,36 @@ var DB = {
 var CURRENT_USER = localStorage.getItem('wv_user') || null;
 
 function showUserPicker() {
-  // Créer l'overlay de sélection
   var ov = document.createElement('div');
   ov.id = 'user-picker';
   ov.style.cssText = 'position:fixed;inset:0;z-index:99999;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;padding:40px';
-  ov.innerHTML = '<div style="font-family:Cormorant Garant,serif;font-size:clamp(2rem,8vw,3rem);color:var(--acc);text-align:center">Winnie <em>&</em> Vvs</div>'
-    + '<div style="font-size:14px;color:var(--tx2);text-align:center">Qui es-tu ?</div>'
-    + '<div style="display:flex;gap:16px;width:100%;max-width:320px">'
-    + '<button onclick="setUser('winnie')" style="flex:1;padding:20px;border:2px solid var(--acc);border-radius:20px;background:transparent;color:var(--acc);font-family:Cormorant Garant,serif;font-size:22px;cursor:pointer">Winnie</button>'
-    + '<button onclick="setUser('vvs')" style="flex:1;padding:20px;border:2px solid var(--acc2);border-radius:20px;background:transparent;color:var(--acc2);font-family:Cormorant Garant,serif;font-size:22px;cursor:pointer">Vvs</button>'
-    + '</div>';
+
+  var title = document.createElement('div');
+  title.style.cssText = 'font-family:Cormorant Garant,serif;font-size:clamp(2rem,8vw,3rem);color:var(--acc);text-align:center';
+  title.innerHTML = 'Winnie <em>&</em> Vvs';
+
+  var sub = document.createElement('div');
+  sub.style.cssText = 'font-size:14px;color:var(--tx2);text-align:center';
+  sub.textContent = 'Qui es-tu ?';
+
+  var row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:16px;width:100%;max-width:320px';
+
+  var btnW = document.createElement('button');
+  btnW.style.cssText = 'flex:1;padding:20px;border:2px solid var(--acc);border-radius:20px;background:transparent;color:var(--acc);font-family:Cormorant Garant,serif;font-size:22px;cursor:pointer';
+  btnW.textContent = 'Winnie';
+  btnW.onclick = function(){ setUser('winnie'); };
+
+  var btnV = document.createElement('button');
+  btnV.style.cssText = 'flex:1;padding:20px;border:2px solid var(--acc2);border-radius:20px;background:transparent;color:var(--acc2);font-family:Cormorant Garant,serif;font-size:22px;cursor:pointer';
+  btnV.textContent = 'Vvs';
+  btnV.onclick = function(){ setUser('vvs'); };
+
+  row.appendChild(btnW);
+  row.appendChild(btnV);
+  ov.appendChild(title);
+  ov.appendChild(sub);
+  ov.appendChild(row);
   document.body.appendChild(ov);
 }
 
