@@ -181,16 +181,13 @@ var NAV={
     return map[p]||'map';
   })(),
   go:function(page){
+    // Déléguer au FAB si disponible
+    if(typeof FAB!=='undefined'){FAB.go(page);return;}
     var pages={list:'liste.html',stats:'stats.html',map:'carte.html',journal:'journal.html',settings:'reglages.html'};
-    var file=pages[page]||'carte.html';
-    // replaceState évite d'empiler l'historique → pas de bouton retour arrière Safari
-    window.location.replace(file);
+    window.location.replace(pages[page]||'carte.html');
   },
   setActive:function(){
-    var page=NAV.cur;
-    document.querySelectorAll('.nb').forEach(function(b){
-      b.classList.toggle('active',b.dataset.p===page);
-    });
+    // Plus de navbar classique, le FAB gère l'état actif
   }
 };
 

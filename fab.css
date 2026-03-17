@@ -1,0 +1,152 @@
+
+/* ── FAB Navigation ─────────────────────────────────────── */
+/* Supprime l'ancienne navbar */
+.bnav { display: none !important; }
+
+/* Le contenu prend tout l'écran */
+.content {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  background: var(--bg);
+  z-index: 10;
+  padding-bottom: 24px;
+}
+
+/* Wrapper FAB — droite, centré verticalement */
+.fab-wrap {
+  position: fixed;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+/* Bouton principal (page active) */
+.fab-main {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 2px solid var(--acc);
+  background: var(--acc);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  cursor: pointer;
+  box-shadow: 0 4px 24px var(--glow), 0 2px 8px rgba(0,0,0,0.5);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+  z-index: 2;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.fab-main:active { transform: scale(0.92); }
+.fab-wrap.open .fab-main {
+  box-shadow: 0 0 32px var(--glow), 0 2px 8px rgba(0,0,0,0.5);
+}
+
+/* Boutons secondaires */
+.fab-item {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1.5px solid var(--bd);
+  background: var(--glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  cursor: pointer;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.4);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.35s cubic-bezier(.34,1.56,.64,1),
+              opacity 0.25s ease,
+              border-color 0.2s ease;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Positions déployées — 2 vers le haut, 2 vers le bas */
+/* Espacement : 68px entre chaque bouton */
+.fab-item[data-slot="up1"] {
+  transition-delay: 0.04s;
+}
+.fab-item[data-slot="up2"] {
+  transition-delay: 0.0s;
+}
+.fab-item[data-slot="down1"] {
+  transition-delay: 0.04s;
+}
+.fab-item[data-slot="down2"] {
+  transition-delay: 0.0s;
+}
+
+/* État ouvert */
+.fab-wrap.open .fab-item {
+  opacity: 1;
+  pointer-events: all;
+}
+.fab-wrap.open .fab-item[data-slot="up1"] {
+  transform: translate(-50%, calc(-50% - 68px)) scale(1);
+}
+.fab-wrap.open .fab-item[data-slot="up2"] {
+  transform: translate(-50%, calc(-50% - 136px)) scale(1);
+}
+.fab-wrap.open .fab-item[data-slot="down1"] {
+  transform: translate(-50%, calc(-50% + 68px)) scale(1);
+}
+.fab-wrap.open .fab-item[data-slot="down2"] {
+  transform: translate(-50%, calc(-50% + 136px)) scale(1);
+}
+
+/* Overlay de fermeture (clic dehors) */
+.fab-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: none;
+}
+.fab-wrap.open ~ .fab-overlay { display: block; }
+
+/* Carte map-container : plein écran quand FAB actif */
+#map-container {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 1;
+}
+.map-bbtns {
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.mloc {
+  bottom: 24px;
+  right: 76px; /* décalé à gauche du FAB */
+}
+.map-top {
+  top: max(14px, env(safe-area-inset-top, 14px));
+}
+
+/* Page header : respecte Dynamic Island en haut */
+.ph {
+  padding-top: max(14px, calc(env(safe-area-inset-top, 0px) + 14px));
+  padding-right: 76px; /* espace pour le FAB */
+}

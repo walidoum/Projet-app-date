@@ -13,6 +13,7 @@
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garant:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="fab.css">
 <style>
 /* Carte occupe tout l'espace hors navbar */
 #map-container{
@@ -37,13 +38,7 @@
 </head>
 <body>
 
-<nav class="bnav">
-  <button class="nb" data-p="list" onclick="NAV.go('list')"><span class="ni">&#128203;</span><span>Liste</span></button>
-  <button class="nb" data-p="stats" onclick="NAV.go('stats')"><span class="ni">&#128202;</span><span>Stats</span></button>
-  <button class="nb" data-p="map" onclick="NAV.go('map')"><span class="ni">&#128506;</span><span>Carte</span></button>
-  <button class="nb" data-p="journal" onclick="NAV.go('journal')"><span class="ni">&#128214;</span><span>Journal</span></button>
-  <button class="nb" data-p="settings" onclick="NAV.go('settings')"><span class="ni">&#9881;&#65039;</span><span>R&#233;glages</span></button>
-</nav>
+<!-- FAB navigation injectée par fab.js -->
 
 <div id="toast"></div>
 <canvas id="cc" style="position:fixed;inset:0;z-index:1799;pointer-events:none"></canvas>
@@ -285,6 +280,7 @@ var MAP=(function(){
   };
 })();
 document.addEventListener('DOMContentLoaded',function(){
+  FAB.init('map');
   initCommon(function(){
     NAV.cur='map';
     MAP.init();MAP.renderSubs();MAP.inval();

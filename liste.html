@@ -12,18 +12,13 @@
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garant:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="fab.css">
 
 <script>try{var _t=JSON.parse(localStorage.getItem('wv_app')||'{}');if(_t.config&&_t.config.theme)document.body.setAttribute('data-theme',_t.config.theme)}catch(e){}</script>
 </head>
 <body>
 
-<nav class="bnav">
-  <button class="nb" data-p="list" onclick="NAV.go('list')"><span class="ni">&#128203;</span><span>Liste</span></button>
-  <button class="nb" data-p="stats" onclick="NAV.go('stats')"><span class="ni">&#128202;</span><span>Stats</span></button>
-  <button class="nb" data-p="map" onclick="NAV.go('map')"><span class="ni">&#128506;</span><span>Carte</span></button>
-  <button class="nb" data-p="journal" onclick="NAV.go('journal')"><span class="ni">&#128214;</span><span>Journal</span></button>
-  <button class="nb" data-p="settings" onclick="NAV.go('settings')"><span class="ni">&#9881;&#65039;</span><span>R&#233;glages</span></button>
-</nav>
+<!-- FAB navigation injectée par fab.js -->
 
 <div id="toast"></div>
 <canvas id="cc" style="position:fixed;inset:0;z-index:1799;pointer-events:none"></canvas>
@@ -171,7 +166,7 @@ var LIST={
   _vth:function(blob,cb){var u=URL.createObjectURL(blob);var v=document.createElement('video');v.muted=true;v.playsInline=true;v.src=u;v.currentTime=0.5;v.onseeked=function(){try{var c=document.createElement('canvas');c.width=v.videoWidth||320;c.height=v.videoHeight||240;c.getContext('2d').drawImage(v,0,0,c.width,c.height);URL.revokeObjectURL(u);cb(c.toDataURL('image/jpeg',.8))}catch(e){URL.revokeObjectURL(u);cb(null)}};v.onerror=function(){URL.revokeObjectURL(u);cb(null)};v.load()},
   _inj:function(card,url,h,col,m,cat,isVid){var p=card.querySelector('.mcpat');if(!p)return;p.innerHTML='<img src="'+url+'" style="width:100%;height:'+h+'px;object-fit:cover;display:block" alt="'+esc(m.title)+'">'+(isVid?'<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-60%);width:36px;height:36px;background:rgba(0,0,0,.55);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px">&#9654;&#65039;</div>':'')+'<div class="mcover"></div>'+(m.fav?'<div class="mcfav">&#11088;</div>':'')+'<div class="mccat" style="background:'+col+'30;color:'+col+';border:1px solid '+col+'50">'+(cat?cat.icon+' '+cat.name:'')+'</div><div class="mcbody"><div class="mctitle">'+esc(m.title)+'</div><div class="mcdate">'+fmtDate(m.date)+'</div></div>'}
 };
-document.addEventListener('DOMContentLoaded',function(){initCommon(function(){NAV.cur='list';LIST.render()});});
+document.addEventListener('DOMContentLoaded',function(){FAB.init('list');initCommon(function(){NAV.cur='list';LIST.render()});});
 </script>
 </body>
 </html>
