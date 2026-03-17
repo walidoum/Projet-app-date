@@ -33,14 +33,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Jost',sans-serif;-webkit-
 
 /* NAVBAR - IDENTIQUE LIFT : display:flex horizontal + padding-bottom env() */
 .bnav{position:fixed;bottom:0;left:0;right:0;background:var(--bg);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid var(--bd);display:flex;z-index:500;padding-bottom:0;-webkit-transform:translateZ(0);transform:translateZ(0);touch-action:none}
-/* PWA : padding-bottom ZERO - on veut que la navbar soit collée tout en bas */
-@media(display-mode:standalone){
-.bnav{padding-bottom:0!important}
-}
-@supports(-webkit-touch-callout:none){
-@media(display-mode:standalone){
-.bnav{padding-bottom:0!important}
-}}
+/* PWA navbar : padding-bottom:0, géré via inline style.visibility */
 .nb{flex:1;padding:10px 4px 8px;background:none;border:none;color:var(--tx2);font-family:'Jost',sans-serif;font-size:9px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;transition:color .2s}
 .nb span.ni{font-size:22px;line-height:1}
 .nb.active{color:var(--acc)}
@@ -119,7 +112,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Jost',sans-serif;-webkit-
 .chip{padding:4px 12px;border-radius:50px;font-size:12px;border:1px solid var(--bd);background:transparent;color:var(--tx2);cursor:pointer;transition:all .2s;white-space:nowrap;font-family:'Jost',sans-serif}
 .chip.on{background:var(--acc);color:var(--bg);border-color:var(--acc)}
 
-#toast{position:fixed;top:max(16px,calc(env(safe-area-inset-top,0px) + 12px));left:50%;transform:translateX(-50%) translateY(-120px);background:var(--sur);border:1px solid var(--bd);border-radius:50px;padding:10px 22px;font-size:13px;color:var(--tx);z-index:9999;box-shadow:var(--sh);transition:transform .4s cubic-bezier(.34,1.56,.64,1),opacity .4s;white-space:nowrap;pointer-events:none;opacity:0}
+#toast{position:fixed;top:max(16px,calc(env(safe-area-inset-top,0px) + 12px));left:50%;transform:translateX(-50%) translateY(-120px);background:var(--sur);border:1px solid var(--bd);border-radius:50px;padding:10px 22px;font-size:13px;color:var(--tx);z-index:9999;box-shadow:var(--sh);transition:transform .4s cubic-bezier(.34,1.56,.64,1),opacity .4s;white-space:nowrap;pointer-events:none;opacity:0;display:block}
 #toast.show{transform:translateX(-50%) translateY(0);opacity:1}
 #toast.ok{border-color:var(--ok);color:var(--ok)}#toast.er{border-color:var(--err);color:var(--err)}
 #cov{position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,.82);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;padding:24px}
@@ -254,11 +247,15 @@ body{background:var(--bg);color:var(--tx);font-family:'Jost',sans-serif;-webkit-
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 
 </style>
+<script>
+// Restauration thème immédiate (avant DOMContentLoaded) pour éviter le flash
+try{var _t=JSON.parse(localStorage.getItem('wv_app')||'{}');if(_t.config&&_t.config.theme)document.body.setAttribute('data-theme',_t.config.theme)}catch(e){}
+</script>
 </head>
 <body data-theme="romantique">
 
 <canvas id="cc"></canvas>
-<div id="toast" class="hidden"></div>
+<div id="toast"></div>
 <div id="splash">
   <div class="sorbs"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div></div>
   <div class="spc">
@@ -277,51 +274,55 @@ body{background:var(--bg);color:var(--tx);font-family:'Jost',sans-serif;-webkit-
     <div class="cbtns"><button class="btn btn-g" onclick="CN.no()">Annuler</button><button class="btn btn-d" onclick="CN.yes()">Supprimer</button></div>
   </div>
 </div>
-<div id="app" class="hidden">
-  <div class="mapwrap" id="mapwrap">
-    <div id="map"></div>
-  </div>
-
-  <!-- Contrôles carte : indépendants du mapwrap, pas de problème de clipping iOS -->
-  <div class="map-top" id="map-top">
-    <div class="map-mode-tabs" id="map-mode-tabs">
-      <button class="modeTab active" data-m="memories" onclick="MAP.setMode('memories',this)">&#10022; Souvenirs</button>
-      <button class="modeTab" data-m="wishlist" onclick="MAP.setMode('wishlist',this)">&#128506; Wishlist</button>
-      <button class="modeTab" data-m="all" onclick="MAP.setMode('all',this)">&#9673; Tout</button>
-    </div>
-    <div class="map-subf" id="map-subf"></div>
-  </div>
-  <div class="map-bbtns" id="map-bbtns">
-    <button class="mabtn" onclick="UI.openSheet('sh-addmem')">&#10022; Souvenir</button>
-    <button class="mabtn mabtn-w" onclick="UI.openSheet('sh-addwish')">&#128506; Wishlist</button>
-  </div>
-  <button class="mloc" id="mloc" onclick="GEO.locate()">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8" stroke-width="1.5"/></svg>
-  </button>
-  <nav class="bnav" id="bnav">
+<nav class="bnav" id="bnav">
     <button class="nb" data-p="list" onclick="NAV.go('list',this)"><span class="ni">&#128203;</span><span>Liste</span></button>
     <button class="nb" data-p="stats" onclick="NAV.go('stats',this)"><span class="ni">&#128202;</span><span>Stats</span></button>
     <button class="nb active" data-p="map" onclick="NAV.go('map',this)"><span class="ni">&#128506;</span><span>Carte</span></button>
     <button class="nb" data-p="journal" onclick="NAV.go('journal',this)"><span class="ni">&#128214;</span><span>Journal</span></button>
     <button class="nb" data-p="settings" onclick="NAV.go('settings',this)"><span class="ni">&#9881;&#65039;</span><span>R&#233;glages</span></button>
   </nav>
-  <div class="page hidden" id="pg-list">
-    <div class="ph"><div><h2 class="pt">Nos Souvenirs</h2><p class="ps" id="list-lbl"></p></div><button class="btn btn-p btn-sm" onclick="UI.openSheet('sh-addmem')">+ Ajouter</button></div>
-    <div class="fbar" id="list-fbar"></div>
-    <div class="sortrow"><span>Trier :</span><select class="sortsel" id="sort-sel" onchange="LIST.render()"><option value="recent">Plus r&#233;cent</option><option value="old">Plus ancien</option><option value="alpha">A &#8594; Z</option><option value="fav">Favoris</option></select></div>
-    <div class="masonry" id="masonry"></div>
+
+<!-- Contrôles carte : position:fixed, enfants directs de body -->
+<div class="map-top" id="map-top" style="visibility:hidden">
+  <div class="map-mode-tabs" id="map-mode-tabs">
+    <button class="modeTab active" data-m="memories" onclick="MAP.setMode('memories',this)">&#10022; Souvenirs</button>
+    <button class="modeTab" data-m="wishlist" onclick="MAP.setMode('wishlist',this)">&#128506; Wishlist</button>
+    <button class="modeTab" data-m="all" onclick="MAP.setMode('all',this)">&#9673; Tout</button>
   </div>
-  <div class="page hidden" id="pg-stats">
-    <div class="ph"><div><h2 class="pt">Notre Histoire</h2><p class="ps">En chiffres</p></div></div>
-    <div style="padding:16px" id="stats-body"></div>
-  </div>
-  <div class="page hidden" id="pg-journal">
-    <div class="ph"><div><h2 class="pt">Notre Journal</h2><p class="ps">Les mots du c&#339;ur</p></div><button class="btn btn-p btn-sm" onclick="UI.openSheet('sh-addjournal')">+ &#201;crire</button></div>
-    <div style="padding:14px 16px" id="jlist"></div>
-  </div>
-  <div class="page hidden" id="pg-settings">
-    <div class="ph"><div><h2 class="pt">R&#233;glages</h2></div></div>
-    <div style="padding:16px" id="settings-body"></div>
+  <div class="map-subf" id="map-subf"></div>
+</div>
+<div class="map-bbtns" id="map-bbtns" style="visibility:hidden">
+  <button class="mabtn" onclick="UI.openSheet('sh-addmem')">&#10022; Souvenir</button>
+  <button class="mabtn mabtn-w" onclick="UI.openSheet('sh-addwish')">&#128506; Wishlist</button>
+</div>
+<button class="mloc" id="mloc" onclick="GEO.locate()" style="visibility:hidden">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8" stroke-width="1.5"/></svg>
+</button>
+
+<!-- Pages : position:fixed, enfants directs de body -->
+<div class="page hidden" id="pg-list">
+  <div class="ph"><div><h2 class="pt">Nos Souvenirs</h2><p class="ps" id="list-lbl"></p></div><button class="btn btn-p btn-sm" onclick="UI.openSheet('sh-addmem')">+ Ajouter</button></div>
+  <div class="fbar" id="list-fbar"></div>
+  <div class="sortrow"><span>Trier :</span><select class="sortsel" id="sort-sel" onchange="LIST.render()"><option value="recent">Plus r&#233;cent</option><option value="old">Plus ancien</option><option value="alpha">A &#8594; Z</option><option value="fav">Favoris</option></select></div>
+  <div class="masonry" id="masonry"></div>
+</div>
+<div class="page hidden" id="pg-stats">
+  <div class="ph"><div><h2 class="pt">Notre Histoire</h2><p class="ps">En chiffres</p></div></div>
+  <div style="padding:16px" id="stats-body"></div>
+</div>
+<div class="page hidden" id="pg-journal">
+  <div class="ph"><div><h2 class="pt">Notre Journal</h2><p class="ps">Les mots du c&#339;ur</p></div><button class="btn btn-p btn-sm" onclick="UI.openSheet('sh-addjournal')">+ &#201;crire</button></div>
+  <div style="padding:14px 16px" id="jlist"></div>
+</div>
+<div class="page hidden" id="pg-settings">
+  <div class="ph"><div><h2 class="pt">R&#233;glages</h2></div></div>
+  <div style="padding:16px" id="settings-body"></div>
+</div>
+
+<!-- Carte seule dans #app : simplifié, pas de conflit stacking context -->
+<div id="app" class="hidden">
+  <div class="mapwrap" id="mapwrap">
+    <div id="map"></div>
   </div>
 </div>
 <div class="ov hidden" id="sh-addmem" onclick="UI.ovc(event,this)">
