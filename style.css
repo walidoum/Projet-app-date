@@ -29,33 +29,29 @@ body{height:100%;background:var(--bg);color:var(--tx);font-family:'Jost',sans-se
   /* safe area : padding uniquement en PWA standalone */
   padding-bottom:0;
 }
+/* PWA standalone uniquement */
 @media(display-mode:standalone){
-  /* iPhone 17 Pro/Max (Dynamic Island) : safe-area-inset-bottom ~34px */
+  /* La navbar prend la safe area en bas */
   .bnav{
-    padding-bottom:max(34px, env(safe-area-inset-bottom, 34px));
-    background:var(--bg);
+    padding-bottom:env(safe-area-inset-bottom, 0px);
   }
-  /* Couvre la zone home indicator — même couleur que le fond */
-  body::after{
+  /* Fond qui bouche la zone home indicator */
+  .bnav::after{
     content:'';
-    position:fixed;
-    bottom:0;left:0;right:0;
-    height:max(34px, env(safe-area-inset-bottom, 34px));
+    position:absolute;
+    left:0;right:0;
+    bottom:calc(-1px - env(safe-area-inset-bottom, 0px));
+    height:calc(1px + env(safe-area-inset-bottom, 0px));
     background:var(--bg);
-    z-index:999;
     pointer-events:none;
   }
-  /* Contenu scrollable : padding bas ajusté */
+  /* Contenu remonte pour pas être sous la navbar élargie */
   .content{
-    bottom:calc(58px + max(34px, env(safe-area-inset-bottom, 34px)));
+    bottom:calc(58px + env(safe-area-inset-bottom, 0px));
   }
-  /* Boutons carte remontent aussi */
-  .map-bbtns, .mloc{
-    bottom:calc(68px + max(34px, env(safe-area-inset-bottom, 34px)));
-  }
-  /* Dynamic Island : filtres carte descendent */
-  .map-top{
-    top:max(59px, env(safe-area-inset-top, 59px));
+  /* Boutons carte */
+  .map-bbtns,.mloc{
+    bottom:calc(68px + env(safe-area-inset-bottom, 0px));
   }
 }
 .nb{
