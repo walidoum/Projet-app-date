@@ -11,7 +11,7 @@
 <title>Journal — Winnie & Vvs</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garant:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=1773766705">
+<link rel="stylesheet" href="style.css?v=1773836635">
 
 <script>try{var _t=JSON.parse(localStorage.getItem('wv_app')||'{}');if(_t.config&&_t.config.theme)document.body.setAttribute('data-theme',_t.config.theme)}catch(e){}</script>
 </head>
@@ -58,7 +58,7 @@
   <div style="padding:14px 16px" id="jlist"></div>
 </div>
 
-<script src="core.js?v=1773766705"></script>
+<script src="core.js?v=1773836635"></script>
 <script>
 var JOURNAL={
   render:function(){
@@ -72,7 +72,43 @@ var JOURNAL={
       var acts=document.createElement('div');acts.className='jacts';
       var eb=document.createElement('button');eb.className='btn btn-g btn-sm';eb.textContent='Modifier';eb.onclick=function(){JOURNAL.edit(j.id);};acts.appendChild(eb);
       var db=document.createElement('button');db.className='btn btn-d btn-sm';db.textContent='Supprimer';db.onclick=function(){JOURNAL.remove(j.id);};acts.appendChild(db);
-      d.appendChild(acts);el.appendChild(d);
+      d.appendChild(acts);
+
+      // Commentaires journal
+      var jcSection=document.createElement('div');
+      jcSection.style.cssText='margin-top:12px;padding-top:10px;border-top:1px solid var(--bd2);';
+      (function(jid,container){
+        function renderJCmts(){
+          container.innerHTML='';
+          var cmts=S.comments.filter(function(c){return c.journalId===jid;})
+            .sort(function(a,b){return b.createdAt.localeCompare(a.createdAt);});
+          cmts.forEach(function(c){
+            var row=document.createElement('div');row.style.cssText='display:flex;gap:8px;margin-bottom:8px;align-items:flex-start;';
+            var av=document.createElement('div');av.style.cssText='flex-shrink:0;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;background:var(--sur2);';
+            av.textContent=c.author==='vvs'?'👸🏻':'🤴🏽';
+            var bbl=document.createElement('div');bbl.style.cssText='flex:1;background:var(--sur2);border-radius:10px;padding:6px 10px;position:relative;';
+            bbl.innerHTML='<div style="font-size:10px;color:var(--acc);font-weight:600;margin-bottom:2px;">'+(c.author==='vvs'?'👸🏻 Vvs':'🤴🏽 Winnie')+'</div><div style="font-size:12px;color:var(--tx);line-height:1.4;">'+esc(c.text)+'</div>';
+            var del=document.createElement('button');del.style.cssText='position:absolute;top:4px;right:6px;background:none;border:none;color:var(--tx3);cursor:pointer;font-size:11px;';del.textContent='×';
+            del.onclick=function(){DB.delComment(c.id,function(){renderJCmts();});};
+            bbl.appendChild(del);row.appendChild(av);row.appendChild(bbl);container.appendChild(row);
+          });
+          // Mini form
+          var mf=document.createElement('div');mf.style.cssText='display:flex;gap:6px;margin-top:6px;';
+          var selA='vvs';
+          var togBtn=document.createElement('button');
+          togBtn.style.cssText='flex-shrink:0;width:32px;height:32px;border-radius:50%;border:1px solid var(--bd);background:var(--sur2);cursor:pointer;font-size:14px;';
+          togBtn.textContent='👸🏻';
+          togBtn.onclick=function(){selA=selA==='vvs'?'winnie':'vvs';togBtn.textContent=selA==='vvs'?'👸🏻':'🤴🏽';};
+          var inp=document.createElement('input');inp.type='text';inp.className='inp';inp.placeholder='Commenter...';inp.style.cssText='flex:1;padding:7px 12px;font-size:13px;';
+          var send=document.createElement('button');send.className='btn btn-p btn-sm';send.textContent='→';send.style.cssText='padding:7px 14px;flex-shrink:0;';
+          send.onclick=function(){var t=inp.value.trim();if(!t)return;DB.addComment(null,jid,selA,t,function(){inp.value='';renderJCmts();});};
+          inp.addEventListener('keydown',function(e){if(e.key==='Enter')send.click();});
+          mf.appendChild(togBtn);mf.appendChild(inp);mf.appendChild(send);container.appendChild(mf);
+        }
+        renderJCmts();
+      })(j.id,jcSection);
+      d.appendChild(jcSection);
+      el.appendChild(d);
     });
   },
   save:function(){
