@@ -47,7 +47,12 @@
 function renderStats(){
   var el=document.getElementById('stats-body');el.innerHTML='';
   var mems=S.memories,favs=mems.filter(function(m){return m.fav;}).length;
-  var cities={};mems.forEach(function(m){var c=cityOf(m.address||'');if(c&&c.length>1&&!/^\d+$/.test(c))cities[c]=(cities[c]||0)+1;});
+  var cities={};mems.forEach(function(m){
+    var c=cityOf(m.address||'');
+    // Si cityOf ne trouve rien d'utile, utiliser le titre du souvenir comme fallback
+    if(!c||c.length<2||/^\d+$/.test(c))c=m.title;
+    cities[c]=(cities[c]||0)+1;
+  });
   var thisMo=new Date().toISOString().slice(0,7);
   var kpis=[{icon:'💑',val:mems.length,lbl:'Dates ensemble'},{icon:'⭐',val:favs,lbl:'Favoris'},
     {icon:'🌍',val:Object.keys(cities).length,lbl:'Villes visitées'},
@@ -96,7 +101,7 @@ function renderStats(){
   }
   var tc=Object.entries(cities).sort(function(a,b){return b[1]-a[1];}).slice(0,6);var mx=tc[0]?tc[0][1]:1;
   if(tc.length){
-    var bs=document.createElement('div');bs.innerHTML='<div class="sshd">Villes les plus visitées</div>';
+    var bs=document.createElement('div');bs.innerHTML='<div class="sshd">Lieux les plus fréquentés</div>';
     tc.forEach(function(c){bs.innerHTML+='<div class="barrow"><div class="barlbl">'+esc(c[0])+'</div><div class="bartrack"><div class="barfill" style="width:0%;background:var(--acc)" data-w="'+Math.round(c[1]/mx*100)+'%"></div></div><div class="barcnt">'+c[1]+'</div></div>';});
     el.appendChild(bs);setTimeout(function(){bs.querySelectorAll('.barfill').forEach(function(b){b.style.width=b.dataset.w;});},100);
   }

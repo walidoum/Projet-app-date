@@ -13,7 +13,24 @@ function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace
 function deb(fn,ms){var t;return function(){var a=arguments,ctx=this;clearTimeout(t);t=setTimeout(function(){fn.apply(ctx,a)},ms)}}
 function fmtAddr(a){var r=(a.road||a.pedestrian||a.footway||'');var n=a.house_number?a.house_number+' ':'';var ci=a.city||a.town||a.village||a.county||'';return[((n+r).trim()),ci,a.country].filter(Boolean).join(', ')}
 function shortAddr(dn){var p=dn.split(',').map(function(s){return s.trim()});return p.slice(0,3).join(', ')}
-function cityOf(addr){var p=(addr||'').split(',').map(function(s){return s.trim()});for(var i=1;i<p.length;i++){if(!/\d/.test(p[i])&&p[i].length>2)return p[i]}return p[0]||''}
+function cityOf(addr){
+  var p=(addr||'').split(',').map(function(s){return s.trim();}).filter(Boolean);
+  // Mots qui indiquent une rue/voie — pas une ville
+  var STREET=/^(rue|avenue|boulevard|impasse|place|chemin|allée|voie|passage|square|cité|parvis|esplanade|route|quai|port|hameau|domaine|résidence|villa)/i;
+  // Pays et régions à ignorer
+  var SKIP=/^(france|belgique|espagne|italie|allemagne|pays.bas|royaume.uni|suisse|maroc|algérie|tunisie|île.de.france|occitanie|bretagne|normandie|provence|auvergne)/i;
+  // Priorité : chercher depuis la fin (city est souvent avant le pays)
+  for(var i=p.length-1;i>=0;i--){
+    var s=p[i];
+    if(!s||s.length<2)continue;
+    if(SKIP.test(s))continue;
+    if(/^\d+$/.test(s))continue;            // numéro pur
+    if(/\d/.test(s)&&/^\d/.test(s))continue; // commence par chiffre (adresse)
+    if(STREET.test(s))continue;              // nom de rue
+    return s;
+  }
+  return p[0]||'';
+}
 
 // ── Demo data ─────────────────────────────────────────────
 var DEMO={
