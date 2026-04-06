@@ -110,6 +110,10 @@
     <div><h2 class="pt">Nos Souvenirs</h2><p class="ps" id="list-lbl"></p></div>
     <button class="btn btn-p btn-sm" onclick="UI.openSheet('sh-addmem')">+ Ajouter</button>
   </div>
+  <div class="searchbar">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" id="search-inp" placeholder="Rechercher un souvenir..." oninput="LIST.search(this.value)" autocomplete="off">
+  </div>
   <div class="fbar" id="list-fbar"></div>
   <div class="sortrow"><span>Trier :</span>
     <select class="sortsel" id="sort-sel" onchange="LIST.render()">
@@ -440,8 +444,9 @@ var P=[
   function(c,i){return '<svg viewBox="0 0 100 100"><defs><pattern id="p'+i+'" width="25" height="25" patternUnits="userSpaceOnUse"><rect x="1" y="1" width="10" height="10" rx="2" fill="none" stroke="'+c+'" stroke-width="0.6" opacity="0.4"/></pattern></defs><rect width="100" height="100" fill="url(#p'+i+')"/></svg>';}
 ];
 
-var _f='all',_tc={};
+var _f='all',_tc={},_q='';
 var LIST={
+  search:function(v){_q=v.toLowerCase().trim();LIST.render();},
   render:function(){
     var fb=document.getElementById('list-fbar');fb.innerHTML='';
     var cats=S.categories.filter(function(c){return c.type==='souvenir';});
@@ -454,6 +459,7 @@ var LIST={
     var mems=S.memories.slice();
     if(_f==='fav')mems=mems.filter(function(m){return m.fav;});
     else if(_f!=='all')mems=mems.filter(function(m){return m.catId===_f;});
+    if(_q)mems=mems.filter(function(m){return(m.title+' '+(m.note||'')+' '+(m.address||'')).toLowerCase().indexOf(_q)>-1;});
     if(sort==='recent')mems.sort(function(a,b){return b.date.localeCompare(a.date);});
     else if(sort==='old')mems.sort(function(a,b){return a.date.localeCompare(b.date);});
     else if(sort==='alpha')mems.sort(function(a,b){return a.title.localeCompare(b.title);});
@@ -461,7 +467,8 @@ var LIST={
     var lbl=document.getElementById('list-lbl');
     if(lbl)lbl.textContent=S.memories.length+' moment'+(S.memories.length>1?'s':'')+' précieux';
     var grid=document.getElementById('masonry');grid.innerHTML='';
-    if(!mems.length){grid.innerHTML='<div class="empty"><div class="emico">💭</div><div class="emtxt">Aucun souvenir.</div></div>';return;}
+    if(!mems.length){grid.innerHTML='<div class="empty"><div class="emico">'
+      +(_q?'🔍':'💭')+'</div><div class="emtxt">'+(_q?'Aucun résultat pour «\u00a0'+_q+'\u00a0»':'Aucun souvenir pour l\'instant.')+'</div></div>';return;}
     mems.forEach(function(m,i){
       var cat=S.categories.find(function(c){return c.id===m.catId;}),col=cat?cat.color:'#C9A96E',h=H[i%H.length];
       var first=m.photoRefs&&m.photoRefs.find(function(r){return r.type&&(r.type.startsWith('image/')||r.type.startsWith('video/'));});
@@ -501,6 +508,9 @@ var LIST={
 };
 
 document.addEventListener('DOMContentLoaded',function(){
+  // Skeleton loading pendant init
+  var grid=document.getElementById('masonry');
+  grid.innerHTML='<div class="skeleton skel-card"></div><div class="skeleton skel-card"></div><div class="skeleton skel-card"></div><div class="skeleton skel-card"></div>';
   initCommon(function(){NAV.cur='list';LIST.render();});
 });
 </script>

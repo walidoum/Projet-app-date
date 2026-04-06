@@ -54,7 +54,25 @@ function renderStats(){
     {icon:'🗓️',val:mems.filter(function(m){return m.date&&m.date.slice(0,7)===thisMo;}).length,lbl:'Ce mois-ci'},
     {icon:'🗺️',val:S.wishlist.length,lbl:'Wishlist'},{icon:'📖',val:S.journal.length,lbl:'Journal'}];
   var kg=document.createElement('div');kg.className='kgrid';
-  kpis.forEach(function(k){var c=document.createElement('div');c.className='kcard';c.innerHTML='<div class="kicon">'+k.icon+'</div><div class="kval">'+k.val+'</div><div class="klbl">'+k.lbl+'</div>';kg.appendChild(c);});
+  kpis.forEach(function(k,ki){
+    var c=document.createElement('div');c.className='kcard';
+    var valEl=document.createElement('div');valEl.className='kval';valEl.textContent='0';
+    c.innerHTML='<div class="kicon">'+k.icon+'</div>';
+    c.appendChild(valEl);
+    var lbl=document.createElement('div');lbl.className='klbl';lbl.textContent=k.lbl;
+    c.appendChild(lbl);kg.appendChild(c);
+    if(k.val>0){
+      var dur=900,started=null,tv=k.val;
+      function easeOut(t){return 1-Math.pow(1-t,3);}
+      (function(el,target,delay){
+        setTimeout(function(){var s=null;requestAnimationFrame(function step(ts){
+          if(!s)s=ts;var p=Math.min((ts-s)/dur,1);
+          el.textContent=Math.round(target*easeOut(p));
+          if(p<1)requestAnimationFrame(step);
+        });},delay);
+      })(valEl,tv,ki*100+300);
+    }else{valEl.textContent=k.val;}
+  });
   var sorted=mems.slice().sort(function(a,b){return a.date.localeCompare(b.date);});
   if(sorted[0]){var fc=document.createElement('div');fc.className='kcard';fc.style.gridColumn='1/-1';fc.innerHTML='<div class="kicon">🥂</div><div class="kval" style="font-size:18px">'+esc(sorted[0].title)+'</div><div class="klbl">Premier souvenir — '+fmtDate(sorted[0].date)+'</div>';kg.appendChild(fc);}
   el.appendChild(kg);
